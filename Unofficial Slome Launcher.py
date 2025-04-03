@@ -2,6 +2,7 @@ import pygame
 import os
 import subprocess
 from time import sleep
+import winreg
 
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
@@ -13,6 +14,7 @@ versionList = os.listdir('versions')
 scroll = 0
 versions = []
 closeLauncher = True
+playerAppearance = []
 
 button = pygame.image.load('launcher/button.png')
 textFont = pygame.font.SysFont(None, 40)
@@ -69,16 +71,19 @@ while running:
                         try:
                             subprocess.Popen(versions[x][1])
                             if closeLauncher == True:
+                                sleep(0.5)
                                 running = False
                         except:
                             try:
                                 subprocess.Popen(str('versions/'+versionList[x] + '/survival project.exe'))
                                 if closeLauncher == True:
+                                    sleep(0.5)
                                     running = False
                             except:
                                 try:
                                     subprocess.Popen(str('versions/'+versionList[x] + '/SlomeSlomeSlomeSlome.exe'))
                                     if closeLauncher == True:
+                                        sleep(0.5)
                                         running = False
                                 except:
                                     error('No Slome.exe file found at path')
@@ -87,6 +92,19 @@ while running:
                     closeLauncher = not closeLauncher
         elif event.type == pygame.MOUSEWHEEL:
             if (scroll >= 0 and event.y > 0) or (versions[-1][3] <= 660 and event.y < 0):
+                windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
+                playerAppearance = [winreg.EnumValue(windowsSlomePath, 25)[1], winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1]]
+                print(playerAppearance)
+#prints out all files in Slome windows registory
+                '''
+                x=0
+                while True:
+                    try:
+                        print(x, ': ', winreg.EnumValue(windowsSlomePath, x))
+                        x+=1
+                    except:
+                        break
+                '''
                 pass
             else:
                 scroll += event.y * 15
@@ -95,3 +113,5 @@ while running:
     pygame.display.update()
 
 pygame.quit()
+
+#C:\Users\mjham\AppData\LocalLow\ZeroEightStudios\Slome
