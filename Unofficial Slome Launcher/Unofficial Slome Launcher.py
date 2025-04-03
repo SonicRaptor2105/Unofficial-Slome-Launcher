@@ -6,7 +6,7 @@ from time import sleep
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
 pygame.display.set_caption("SonicRaptor's Unofficial Slome Launcher")
-pygame.display.set_icon(pygame.image.load('launcher/icon.ico'))
+pygame.display.set_icon(pygame.image.load('launcher/slomeIcon.ico'))
 
 versionList = os.listdir('versions')
 
@@ -35,21 +35,25 @@ running = True
 while running:
     screen.fill('white')
     screen.blit(pygame.image.load('launcher/leftSide.png'), (0,0))
-    screen.blit((smallTextFont.render('a0.1.0', True, (0,0,0))), (8, 695))
+    #The following two assests are taken directly from Slome and edited. They are not owned or created by me
+    screen.blit(pygame.image.load('launcher/rightSide.png'), (400,0))
+    screen.blit(pygame.image.load('launcher/slomePlaceholder.png'), (75,80))
+
+    screen.blit((smallTextFont.render('a0.1.0', True, (255,255,255))), (14, 690))
 
     if closeLauncher == True:
-        screen.blit((smallTextFont.render('Keep launcher open', True, (0,0,0))), (50, 402))
-        pygame.draw.lines(screen, [0,0,0], True, [(20,420), (40,420), (40,400), (20,400)])
+        screen.blit((smallTextFont.render('Keep launcher open', True, (255,255,255))), (50, 402))
+        pygame.draw.lines(screen, [255,255,255], True, [(20,420), (40,420), (40,400), (20,400)])
     else:
-        screen.blit((smallTextFont.render('Keep launcher open', True, (0,0,0))), (50, 402))
-        pygame.draw.rect(screen, [0, 0, 0], [20, 400, 20, 20])
+        screen.blit((smallTextFont.render('Keep launcher open', True, (255,255,255))), (50, 402))
+        pygame.draw.rect(screen, [255,255,255], [20, 400, 20, 20])
 
     x = 0
     while x < len(versionList):
-        versions.append([versionList[x], ('versions/'+versionList[x] + '/Slome.exe'), 600, x * 60 + 20 + scroll])
+        versions.append([versionList[x], ('versions/'+versionList[x] + '/Slome.exe'), 550, x * 60 + 20 + scroll])
         if len(versionList[x]) > 28:
             versions[-1][0] = versionList[x][:28] + '...'
-        drawButton(versions[x][0],textFont,(0,0,0),versions[x][2], versions[x][3])
+        drawButton(versions[x][0],textFont,(255,255,255),versions[x][2], versions[x][3])
         x+=1
 
     mousePosition = pygame.mouse.get_pos() 
@@ -61,7 +65,7 @@ while running:
             if pygame.mouse.get_pressed()[0] == True:
                 x = 0
                 while x < len(versionList):
-                    if 600 <= mousePosition[0] <= 1100 and versions[x][3] <= mousePosition[1] <= versions[x][3] + 50:
+                    if 550 <= mousePosition[0] <= 1050 and versions[x][3] <= mousePosition[1] <= versions[x][3] + 50:
                         try:
                             subprocess.Popen(versions[x][1])
                             if closeLauncher == True:
@@ -82,11 +86,10 @@ while running:
                 if 20 <= mousePosition[0] <= 40 and 400 <= mousePosition[1] <= 420:
                     closeLauncher = not closeLauncher
         elif event.type == pygame.MOUSEWHEEL:
-            scroll += event.y * 15
-            if scroll >= 0:
-                scroll = 0
-            elif versions[-1][3] <= 660:
-                scroll += 15
+            if (scroll >= 0 and event.y > 0) or (versions[-1][3] <= 660 and event.y < 0):
+                pass
+            else:
+                scroll += event.y * 15
 
     versions = []
     pygame.display.update()
