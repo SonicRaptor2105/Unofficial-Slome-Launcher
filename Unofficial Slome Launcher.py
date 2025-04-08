@@ -1,10 +1,10 @@
 import pygame
 import os
 import subprocess
-from time import sleep
+import time
 import winreg
 
-launcherVersion = 'a0.1.3'
+launcherVersion = 'a0.1.4'
 
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
@@ -22,14 +22,22 @@ sprite = pygame.image
 
 sliderSelected = 0
 sliding = False
+inputSelected = 0
+inputNumber = False
+rgbTestValue = 0
+inputUsername = False
+usernameTestValue = ''
+cursorPosition = 0
 bigSlome = False
+
+rgbKeyValues = ['colour_r_h2463154688','colour_g_h2463154709','colour_b_h2463154704']
+
+windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
+profile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
 
 button = pygame.image.load('launcher/button.png')
 textFont = pygame.font.SysFont(None, 40)
 smallTextFont = pygame.font.SysFont(None, 30)
-
-windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
-profile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
 
 def drawButton(text, font, textColour, x, y):
     screen.blit(button, [x, y])
@@ -40,7 +48,7 @@ def error(message):
     pygame.draw.rect(screen, (0,0,0), [573 - len(message) * 8 - 50, 290, 600, 50])
     screen.blit((textFont.render(f'Error: {message}', True, (255,0,0))), (573 - len(message) * 8, 300))
     pygame.display.update()
-    sleep(0.8)
+    time.sleep(0.8)
     return
 
 def drawSlider():
@@ -60,6 +68,9 @@ while running:
     screen.blit(pygame.image.load('launcher/leftSide.png'), (0,0))
     screen.blit(pygame.image.load('launcher/rightSide.png'), (400,0))
 
+    overlay = pygame.Surface((250, 25), pygame.SRCALPHA)
+    overlay.fill((255,255,255,80))
+    screen.blit(overlay, (70, 47))
     screen.blit((smallTextFont.render(profile[0], True, (255, 255, 255))), (70, 50))
     sprite = pygame.image.load('launcher/slomePlaceholder.png').convert()
     if profile[1] == (0,0,0):
@@ -107,6 +118,9 @@ while running:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if pygame.mouse.get_pressed()[0] == True:
+                inputNumber = False
+                rgbTestValue = 0
+                inputUsername = False
                 if mousePosition[0] > 400:
                     x = 0
                     while x < len(versionList):
@@ -114,19 +128,19 @@ while running:
                             try:
                                 subprocess.Popen(versions[x][1])
                                 if closeLauncher == True:
-                                    sleep(2)
+                                    time.sleep(2)
                                     running = False
                             except:
                                 try:
                                     subprocess.Popen(str('versions/'+versionList[x] + '/survival project.exe'))
                                     if closeLauncher == True:
-                                        sleep(2)
+                                        time.sleep(2)
                                         running = False
                                 except:
                                     try:
                                         subprocess.Popen(str('versions/'+versionList[x] + '/SlomeSlomeSlomeSlome.exe'))
                                         if closeLauncher == True:
-                                            sleep(2)
+                                            time.sleep(2)
                                             running = False
                                     except:
                                         error('No Slome.exe file found at path')
@@ -143,6 +157,17 @@ while running:
                             sliderSelected = x
                             sliding = True
                         x+=1
+                elif 320 <= mousePosition[0] <= 365 and 340 <= mousePosition[1] <= 445:
+                    x=0
+                    while x < 3:
+                        if 320 <= mousePosition[0] <= 365 and (340 + x * 35) <= mousePosition[1] <= (364 + x * 35):
+                            inputSelected = x
+                            inputNumber = True
+                        x+=1
+                elif 70 <= mousePosition[0] <= 320 and 47 <= mousePosition[1] <= 72:
+                    inputUsername = True
+                    usernameTestValue = profile[0]
+
         elif event.type == pygame.MOUSEBUTTONUP:
             sliding = False
         elif event.type == pygame.MOUSEMOTION:
@@ -150,23 +175,59 @@ while running:
                 tempProfile = list(profile[1])
                 tempProfile[sliderSelected] = min(255, max(0, (mousePosition[0] - 40)))
                 profile[1] = tuple(tempProfile)
-                rgbKeyValues = ['colour_r_h2463154688','colour_g_h2463154709','colour_b_h2463154704']
-                x = 0
-                while x < 3:
-                    saveRGB = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome", 0, winreg.KEY_WRITE)
-                    winreg.SetValueEx(saveRGB, rgbKeyValues[x], 0, winreg.REG_DWORD, profile[1][x])
-                    x+=1
-                saveRGB.Close
             elif 72 <= mousePosition[0] <= 322 and 80 <= mousePosition[1] <= 330:
                 bigSlome = True
             else:
                 bigSlome = False
-                
+        elif event.type == pygame.KEYDOWN:
+            if inputNumber == True:
+                if pygame.K_0 <= event.key <= pygame.K_9:
+                    rgbTestValue = int(str(rgbTestValue) + str(event.key - pygame.K_0))
+                    if rgbTestValue > 255:
+                        rgbTestValue = 255
+                elif event.key == pygame.K_BACKSPACE:
+                    if rgbTestValue >= 10:
+                        rgbTestValue = int(str(rgbTestValue)[:-1])
+                    else:
+                        rgbTestValue = 0
+                elif event.key == pygame.K_RETURN:
+                    inputNumber = False
+                    break
+                tempProfile = list(profile[1])
+                tempProfile[inputSelected] = rgbTestValue
+                profile[1] = tuple(tempProfile)
+            elif inputUsername == True:
+                if event.key == pygame.K_BACKSPACE:
+                    usernameTestValue = usernameTestValue[:-1]
+                elif pygame.K_a <= event.key <= pygame.K_z or pygame.K_0 <= event.key <= pygame.K_9 or event.unicode in "!@#$%^&*()_-+={}[]\|:;\"'><,.?/~` ":
+                    usernameTestValue = usernameTestValue + event.unicode
+
+                print(usernameTestValue)
+                profile[0] = usernameTestValue
         elif event.type == pygame.MOUSEWHEEL:
             if (scroll >= 0 and event.y > 0) or (versions[-1][3] <= 660 and event.y < 0):
                 pass
             else:
                 scroll += event.y * 15
+
+    if inputNumber == True:
+        overlay = pygame.Surface((45, 24), pygame.SRCALPHA)
+        overlay.fill((255,255,255,120))
+        screen.blit(overlay, (320, (340 + inputSelected * 35)))
+
+    elif inputUsername == True:
+        overlay = pygame.Surface((250, 25), pygame.SRCALPHA)
+        overlay.fill((255,255,255,120))
+        screen.blit(overlay, (70, 47))
+
+    if sliding == True or inputNumber == True or inputUsername == True:
+        winregWrite = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome", 0, winreg.KEY_WRITE)
+        x = 0
+        while x < 3:
+            winreg.SetValueEx(winregWrite, rgbKeyValues[x], 0, winreg.REG_DWORD, profile[1][x])
+            x+=1
+        winreg.SetValueEx(winregWrite, 'username_h2363791411', 0, winreg.REG_BINARY, profile[0].encode('utf-8'))
+        winregWrite.Close
 
     versions = []
     pygame.display.update()
