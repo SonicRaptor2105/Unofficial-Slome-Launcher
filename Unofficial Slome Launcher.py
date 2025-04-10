@@ -3,8 +3,9 @@ import os
 import subprocess
 import time
 import winreg
+import copy
 
-launcherVersion = 'a0.1.5'
+launcherVersion = 'a0.1.6'
 
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
@@ -16,7 +17,10 @@ versionList = os.listdir('versions')
 scroll = 0
 versions = []
 closeLauncher = True
-profile = []
+
+profileSelected = 0
+allProfiles = [[]]
+currentProfile = []
 
 sprite = pygame.image
 
@@ -33,7 +37,7 @@ bigSlome = False
 rgbKeyValues = ['colour_r_h2463154688','colour_g_h2463154709','colour_b_h2463154704']
 
 windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
-profile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
+currentProfile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
 windowsSlomePath.Close
 
 button = pygame.image.load('launcher/button.png')
@@ -41,9 +45,9 @@ textFont = pygame.font.SysFont(None, 40)
 smallTextFont = pygame.font.SysFont(None, 30)
 
 def checkWinReg():
-    global profile
+    global currentProfile
     windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
-    profile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
+    currentProfile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
     windowsSlomePath.Close
 
 def drawButton(text, font, textColour, x, y):
@@ -62,21 +66,21 @@ def drawUsername():
     overlay = pygame.Surface((250, 25), pygame.SRCALPHA)
     overlay.fill((255,255,255,80))
     screen.blit(overlay, (70, 47))
-    screen.blit((smallTextFont.render(profile[0], True, (255, 255, 255))), (70, 50))
+    screen.blit((smallTextFont.render(currentProfile[0], True, (255, 255, 255))), (70, 50))
     return
 
 def drawSlome():
     sprite = pygame.image.load('launcher/slomePlaceholder.png').convert()
-    if profile[1] == (0,0,0):
-        profile[1] = (1,1,1)
+    if currentProfile[1] == (0,0,0):
+        currentProfile[1] = (1,1,1)
     sprite.set_colorkey((0,0,0))
     pixels = pygame.PixelArray(sprite)
-    pixels.replace((255,255,255), profile[1])
-    temp = list(profile[1])
+    pixels.replace((255,255,255), currentProfile[1])
+    temp = list(currentProfile[1])
     x=0
     while x < 3:
-        if profile[1][x] - 55 >= 0:
-            temp[x] = profile[1][x] - 55
+        if currentProfile[1][x] - 55 >= 0:
+            temp[x] = currentProfile[1][x] - 55
         else:
             temp[x] = 1
         x+=1
@@ -92,18 +96,31 @@ def drawSlome():
 def drawSlider():
     x=0
     while x < 3:
-        pygame.draw.rect(screen, [0,0,0], [40, (350 + x * 35), 255, 4])
-        pygame.draw.rect(screen, [0,0,0], [40 + profile[1][x], (342 + x * 35), 5, 20])
+        pygame.draw.rect(screen, [255,255,255], [40, (350 + x * 35), 255, 4])
+        pygame.draw.rect(screen, [255,255,255], [40 + currentProfile[1][x], (342 + x * 35), 5, 20])
         pygame.draw.rect(screen, [30,30,30], [320, (340 + x * 35), 45, 24])
-        screen.blit(smallTextFont.render(str(profile[1][x]), True, (255,255,255)), (325, 343 + x * 35))
+        screen.blit(smallTextFont.render(str(currentProfile[1][x]), True, (255,255,255)), (325, 343 + x * 35))
         x+=1
     return
 
 def profileMenu():
-    global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue  
+    global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue, profileSelected, allProfiles, currentProfile
     bigSlome = False
 
+    profiles = open('launcher/data.txt', 'r').readlines()
+    allProfiles = [[], [], [], [], [], [], [], [], [], []]
+    x=0
+    while x < 10:
+        allProfiles[x] = [profiles[x].replace('\n','').replace('[','').replace(']','')]
+        try:
+            allProfiles[x] = list(eval(allProfiles[x][0]))
+        except:
+            allProfiles[x] = []
+        x+=1
+    profileSelected = int(profiles[10])
+    print(allProfiles, profileSelected)
     checkWinReg()
+
     profileMenuRunning = True
     while profileMenuRunning == True:
         pygame.draw.rect(screen, [0,0,0], [0,0,1200,720])
@@ -111,6 +128,8 @@ def profileMenu():
         drawUsername()
         drawSlome()
         drawSlider()
+        pygame.draw.polygon(screen, [255,255,255], [(332, 175), (352, 195), (332, 215)])
+        pygame.draw.polygon(screen, [255,255,255], [(57, 175), (37, 195), (57, 215)])
 
         mousePosition = pygame.mouse.get_pos() 
         for event in pygame.event.get():
@@ -139,16 +158,42 @@ def profileMenu():
                             x+=1
                     elif 70 <= mousePosition[0] <= 320 and 47 <= mousePosition[1] <= 72:
                         inputUsername = True
-                        usernameTestValue = profile[0]
+                        usernameTestValue = copy.deepcopy(currentProfile[0])
+                    elif 37 <= mousePosition[0] <= 352 and  175 <= mousePosition[1] <= 215:
+                        allProfiles[profileSelected] = currentProfile
+                        if 37 <= mousePosition[0] <= 57:
+                            profileSelected -= 1
+                            if profileSelected < 0:
+                                profileSelected = 0
+                        elif 332 <= mousePosition[0] <= 352:
+                            profileSelected += 1
+                            if profileSelected > 9:
+                                profileSelected = 9
+                            if allProfiles[profileSelected] == []:
+                                allProfiles[profileSelected] = [f'Profile {profileSelected}', (255,255,255)]
+                        currentProfile = copy.deepcopy(allProfiles[profileSelected])
+
+                        '''
+                        read = open('launcher/data.txt', 'r').readline
+                        x=0
+                        while x < 9:
+                            read[x] = allProfiles[x]
+                        write = open('launcher/data.txt', 'w')
+                        write.writelines(read)
+                        write.close
+
+                        print(currentProfile)
+                        print(profileSelected)
+                        print(allProfiles)'''
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 sliding = False
 
             elif event.type == pygame.MOUSEMOTION:
                 if sliding == True:
-                    tempProfile = list(profile[1])
+                    tempProfile = list(currentProfile[1])
                     tempProfile[sliderSelected] = min(255, max(0, (mousePosition[0] - 40)))
-                    profile[1] = tuple(tempProfile)
+                    currentProfile[1] = tuple(tempProfile)
             
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -166,16 +211,17 @@ def profileMenu():
                     elif event.key == pygame.K_RETURN:
                         inputNumber = False
                         break
-                    tempProfile = list(profile[1])
+                    tempProfile = list(currentProfile[1])
                     tempProfile[inputSelected] = rgbTestValue
-                    profile[1] = tuple(tempProfile)
+                    currentProfile[1] = tuple(tempProfile)
                 elif inputUsername == True:
                     if event.key == pygame.K_BACKSPACE:
                         usernameTestValue = usernameTestValue[:-1]
                     elif pygame.K_a <= event.key <= pygame.K_z or pygame.K_0 <= event.key <= pygame.K_9 or event.unicode in "!@#$%^&*()_-+={}[]\|:;\"'><,.?/~` ":
-                        usernameTestValue = usernameTestValue + event.unicode
+                        if len(usernameTestValue) <= 21:
+                            usernameTestValue = usernameTestValue + event.unicode
                     print(usernameTestValue)
-                    profile[0] = usernameTestValue
+                    currentProfile[0] = usernameTestValue
 
         if inputNumber == True:
             overlay = pygame.Surface((45, 24), pygame.SRCALPHA)
@@ -191,9 +237,9 @@ def profileMenu():
             winregWrite = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome", 0, winreg.KEY_WRITE)
             x = 0
             while x < 3:
-                winreg.SetValueEx(winregWrite, rgbKeyValues[x], 0, winreg.REG_DWORD, profile[1][x])
+                winreg.SetValueEx(winregWrite, rgbKeyValues[x], 0, winreg.REG_DWORD, currentProfile[1][x])
                 x+=1
-            winreg.SetValueEx(winregWrite, 'username_h2363791411', 0, winreg.REG_BINARY, profile[0].encode('utf-8'))
+            winreg.SetValueEx(winregWrite, 'username_h2363791411', 0, winreg.REG_BINARY, currentProfile[0].encode('utf-8'))
             winregWrite.Close
 
         pygame.display.update()
