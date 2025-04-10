@@ -3,9 +3,9 @@ import os
 import subprocess
 import time
 import winreg
-import copy
 
-launcherVersion = 'a0.1.6'
+
+launcherVersion = 'a0.1.7'
 
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
@@ -44,11 +44,54 @@ button = pygame.image.load('launcher/button.png')
 textFont = pygame.font.SysFont(None, 40)
 smallTextFont = pygame.font.SysFont(None, 30)
 
+def syncValues():
+    global allProfiles, profileSelected, closeLauncher
+    profiles = open('launcher/data.txt', 'r').readlines()
+    allProfiles = [[], [], [], [], [], [], [], [], [], []]
+    x=0
+    while x < 10:
+        allProfiles[x] = [profiles[x].replace('\n','').replace('[','').replace(']','')]
+        try:
+            allProfiles[x] = list(eval(allProfiles[x][0]))
+        except:
+            allProfiles[x] = []
+        x+=1
+    profileSelected = int(profiles[10])
+    if profiles[11] == 'True':
+        closeLauncher = True
+    else:
+        closeLauncher = False
+    checkWinReg()
+    return
+
 def checkWinReg():
     global currentProfile
     windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
     currentProfile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
     windowsSlomePath.Close
+
+def saveToWinReg():
+    winregWrite = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome", 0, winreg.KEY_WRITE)
+    x = 0
+    while x < 3:
+        winreg.SetValueEx(winregWrite, rgbKeyValues[x], 0, winreg.REG_DWORD, currentProfile[1][x])
+        x+=1
+    winreg.SetValueEx(winregWrite, 'username_h2363791411', 0, winreg.REG_BINARY, currentProfile[0].encode('utf-8'))
+    winregWrite.Close
+
+def saveProfiles():
+    global currentProfile
+    currentProfile = allProfiles[profileSelected]
+    read = open('launcher/data.txt', 'r').readlines()
+    x=0
+    while x < 10:
+        read[x] = str(allProfiles[x]) + '\n'
+        x+=1
+    read[10] = str(profileSelected) + '\n'
+    read[11] = str(closeLauncher)
+    with open('launcher/data.txt', 'w') as write:
+        write.writelines(read)
+    return
 
 def drawButton(text, font, textColour, x, y):
     screen.blit(button, [x, y])
@@ -107,24 +150,13 @@ def profileMenu():
     global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue, profileSelected, allProfiles, currentProfile
     bigSlome = False
 
-    profiles = open('launcher/data.txt', 'r').readlines()
-    allProfiles = [[], [], [], [], [], [], [], [], [], []]
-    x=0
-    while x < 10:
-        allProfiles[x] = [profiles[x].replace('\n','').replace('[','').replace(']','')]
-        try:
-            allProfiles[x] = list(eval(allProfiles[x][0]))
-        except:
-            allProfiles[x] = []
-        x+=1
-    profileSelected = int(profiles[10])
-    print(allProfiles, profileSelected)
-    checkWinReg()
+    syncValues()
 
     profileMenuRunning = True
     while profileMenuRunning == True:
         pygame.draw.rect(screen, [0,0,0], [0,0,1200,720])
         screen.blit(pygame.image.load('launcher/largeMenu.png'), (15,15))
+        screen.blit((smallTextFont.render(f'Profile: {profileSelected}', True, (255, 255, 255))), (26, 674))
         drawUsername()
         drawSlome()
         drawSlider()
@@ -158,7 +190,7 @@ def profileMenu():
                             x+=1
                     elif 70 <= mousePosition[0] <= 320 and 47 <= mousePosition[1] <= 72:
                         inputUsername = True
-                        usernameTestValue = copy.deepcopy(currentProfile[0])
+                        usernameTestValue = currentProfile[0]
                     elif 37 <= mousePosition[0] <= 352 and  175 <= mousePosition[1] <= 215:
                         allProfiles[profileSelected] = currentProfile
                         if 37 <= mousePosition[0] <= 57:
@@ -169,23 +201,11 @@ def profileMenu():
                             profileSelected += 1
                             if profileSelected > 9:
                                 profileSelected = 9
-                            if allProfiles[profileSelected] == []:
-                                allProfiles[profileSelected] = [f'Profile {profileSelected}', (255,255,255)]
-                        currentProfile = copy.deepcopy(allProfiles[profileSelected])
-
-                        '''
-                        read = open('launcher/data.txt', 'r').readline
-                        x=0
-                        while x < 9:
-                            read[x] = allProfiles[x]
-                        write = open('launcher/data.txt', 'w')
-                        write.writelines(read)
-                        write.close
-
-                        print(currentProfile)
-                        print(profileSelected)
-                        print(allProfiles)'''
-
+                        if allProfiles[profileSelected] == []:
+                            allProfiles[profileSelected] = [f'Profile {profileSelected}', (255,255,255)]
+                        saveProfiles()
+                        saveToWinReg()
+                        
             elif event.type == pygame.MOUSEBUTTONUP:
                 sliding = False
 
@@ -220,7 +240,6 @@ def profileMenu():
                     elif pygame.K_a <= event.key <= pygame.K_z or pygame.K_0 <= event.key <= pygame.K_9 or event.unicode in "!@#$%^&*()_-+={}[]\|:;\"'><,.?/~` ":
                         if len(usernameTestValue) <= 21:
                             usernameTestValue = usernameTestValue + event.unicode
-                    print(usernameTestValue)
                     currentProfile[0] = usernameTestValue
 
         if inputNumber == True:
@@ -234,18 +253,15 @@ def profileMenu():
             screen.blit(overlay, (70, 47))
 
         if sliding == True or inputNumber == True or inputUsername == True:
-            winregWrite = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome", 0, winreg.KEY_WRITE)
-            x = 0
-            while x < 3:
-                winreg.SetValueEx(winregWrite, rgbKeyValues[x], 0, winreg.REG_DWORD, currentProfile[1][x])
-                x+=1
-            winreg.SetValueEx(winregWrite, 'username_h2363791411', 0, winreg.REG_BINARY, currentProfile[0].encode('utf-8'))
-            winregWrite.Close
-
+            saveToWinReg()
+            allProfiles[profileSelected] = currentProfile
+            saveProfiles()
+        
         pygame.display.update()
 
 
 
+syncValues()
 running = True
 while running:
     screen.fill('white')
@@ -258,10 +274,10 @@ while running:
     screen.blit((smallTextFont.render(launcherVersion, True, (255,255,255))), (14, 690))
 
     if closeLauncher == True:
-        pygame.draw.lines(screen, [255,255,255], True, [(20,550), (40,550), (40,570), (20,570)])
-    else:
-        pygame.draw.rect(screen, [255,255,255], [20, 550, 20, 20])
-    screen.blit((smallTextFont.render('Keep launcher open', True, (255,255,255))), (50, 552))
+        pygame.draw.lines(screen, [255,255,255], True, [(20,420), (40,420), (40,400), (20,400)])
+    elif closeLauncher == False:
+        pygame.draw.rect(screen, [255,255,255], [20, 400, 20, 20])
+    screen.blit((smallTextFont.render('Keep launcher open', True, (255,255,255))), (50, 402))
 
     x = 0
     while x < len(versionList):
@@ -304,8 +320,9 @@ while running:
                                     except:
                                         error('No Slome.exe file found at path')
                         x+=1
-                elif 20 <= mousePosition[0] <= 40 and 550 <= mousePosition[1] <= 570:
+                elif 20 <= mousePosition[0] <= 40 and 400 <= mousePosition[1] <= 420:
                     closeLauncher = not closeLauncher
+                    saveProfiles()
                 elif 72 <= mousePosition[0] <= 322 and 80 <= mousePosition[1] <= 330:
                     profileMenu()
                 
