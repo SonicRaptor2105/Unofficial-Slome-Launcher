@@ -3,7 +3,7 @@ import os
 import subprocess
 import time
 import winreg
-
+import json
 
 launcherVersion = 'a0.1.7'
 
@@ -46,7 +46,7 @@ smallTextFont = pygame.font.SysFont(None, 30)
 
 def syncValues():
     global allProfiles, profileSelected, closeLauncher
-    profiles = open('launcher/data.txt', 'r').readlines()
+    profiles = open('launcher/profiles.dat', 'r').readlines()
     allProfiles = [[], [], [], [], [], [], [], [], [], []]
     x=0
     while x < 10:
@@ -82,14 +82,25 @@ def saveToWinReg():
 def saveProfiles():
     global currentProfile
     currentProfile = allProfiles[profileSelected]
-    read = open('launcher/data.txt', 'r').readlines()
+    read = open('launcher/profiles.dat', 'r').readlines()
+    profileDictionary = {}
     x=0
     while x < 10:
         read[x] = str(allProfiles[x]) + '\n'
+        profileDictionary[f'profile_{x}'] = allProfiles[x]
         x+=1
     read[10] = str(profileSelected) + '\n'
     read[11] = str(closeLauncher)
-    with open('launcher/data.txt', 'w') as write:
+    profileDictionary['profileSelected'] = profileSelected
+    profileDictionary['closeLauncher'] = closeLauncher
+
+    with open('launcher/data.txt', "w") as file:
+        json.dump(profileDictionary, file)
+        
+    with open('launcher/data.txt', "r") as file:
+        profileDictionary = json.load(file)
+
+    with open('launcher/profiles.dat', 'w') as write:
         write.writelines(read)
     return
 
