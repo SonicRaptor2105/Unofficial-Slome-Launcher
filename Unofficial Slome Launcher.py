@@ -48,7 +48,7 @@ def syncValues():
         with open('launcher/config.json', "r") as file:
             profileDictionary = json.load(file)
     except:
-        newConfig = {'profile_0' : ['New_Profile',(255,0,0)], 'profile_1' : [], 'profile_2' : [], 'profile_3' : [], 'profile_4' : [], 'profile_5' : [], 'profile_6' : [], 'profile_7' : [], 'profile_8' : [], 'profile_9' : [], 'profileSelected': 0, 'closeLauncher': True}
+        newConfig = {'profile_0' : ['New_Profile',(255,0,0)], 'profile_1' : [], 'profile_2' : [], 'profile_3' : [], 'profile_4' : [], 'profile_5' : [], 'profile_6' : [], 'profile_7' : [], 'profile_8' : [], 'profile_9' : [], 'profileSelected': 0, 'closeLauncher': True, 'useLauncherSaves' : False}
         with open('launcher/config.json', "w") as file:
             json.dump(newConfig, file)
         profileDictionary = newConfig    
@@ -100,7 +100,10 @@ def drawUsername():
     overlay = pygame.Surface((250, 25), pygame.SRCALPHA)
     overlay.fill((255,255,255,80))
     screen.blit(overlay, (70, 47))
-    screen.blit((smallTextFont.render(currentProfile[0], True, (255, 255, 255))), (70, 50))
+    if inputUsername == False:
+        screen.blit((smallTextFont.render(currentProfile[0], True, (255, 255, 255))), (70, 50))
+    else:
+        screen.blit((smallTextFont.render(currentProfile[0] + '|', True, (255, 255, 255))), (70, 50))
     return
 
 def drawSlome():
@@ -145,14 +148,20 @@ def profileMenu():
 
     profileMenuRunning = True
     while profileMenuRunning == True:
-        pygame.draw.rect(screen, [0,0,0], [0,0,1200,720])
-        screen.blit(pygame.image.load('launcher/largeMenu.png'), (15,15))
-        screen.blit((smallTextFont.render(f'Profile: {profileDictionary['profileSelected']}', True, (255, 255, 255))), (26, 674))
+        screen.blit(pygame.image.load('launcher/largeMenu.png'), (0,0))
+        screen.blit((smallTextFont.render(f'Profile: {profileDictionary['profileSelected']}', True, (255, 255, 255))), (14, 690))
+        screen.blit(smallTextFont.render('?', True, (255,255,255)), (1170, 16))
         drawUsername()
         drawSlome()
         drawSlider()
         pygame.draw.polygon(screen, [255,255,255], [(332, 175), (352, 195), (332, 215)])
         pygame.draw.polygon(screen, [255,255,255], [(57, 175), (37, 195), (57, 215)])
+        if profileDictionary['useLauncherSaves'] == False:
+            pygame.draw.lines(screen, [255,255,255], True, [(820,60), (840,60), (840,40), (820,40)])
+        elif profileDictionary['useLauncherSaves'] == True:
+            pygame.draw.rect(screen, [255,255,255], [820, 40, 20, 20])
+        screen.blit((smallTextFont.render('Use Launcher Saves', True, (255,255,255))), (855, 42))
+        screen.blit(pygame.image.load('launcher/folderIcon.png'), (1060,44))
 
         mousePosition = pygame.mouse.get_pos() 
         for event in pygame.event.get():
