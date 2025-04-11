@@ -16,10 +16,8 @@ versionList = os.listdir('versions')
 
 scroll = 0
 versions = []
-closeLauncher = True
 
-profileSelected = 0
-allProfiles = [[]]
+profileDictionary = {}
 currentProfile = []
 
 sprite = pygame.image
@@ -45,22 +43,22 @@ textFont = pygame.font.SysFont(None, 40)
 smallTextFont = pygame.font.SysFont(None, 30)
 
 def syncValues():
-    global allProfiles, profileSelected, closeLauncher
-    profiles = open('launcher/profiles.dat', 'r').readlines()
-    allProfiles = [[], [], [], [], [], [], [], [], [], []]
+    global profileDictionary
+    try:
+        with open('launcher/config.json', "r") as file:
+            profileDictionary = json.load(file)
+    except:
+        newConfig = {'profile_0' : ['New_Profile',(255,0,0)], 'profile_1' : [], 'profile_2' : [], 'profile_3' : [], 'profile_4' : [], 'profile_5' : [], 'profile_6' : [], 'profile_7' : [], 'profile_8' : [], 'profile_9' : [], 'profileSelected': 0, 'closeLauncher': True}
+        with open('launcher/config.json', "w") as file:
+            json.dump(newConfig, file)
+        profileDictionary = newConfig    
     x=0
     while x < 10:
-        allProfiles[x] = [profiles[x].replace('\n','').replace('[','').replace(']','')]
         try:
-            allProfiles[x] = list(eval(allProfiles[x][0]))
+            profileDictionary[f'profile_{x}'][1] = tuple(profileDictionary[f'profile_{x}'][1])
         except:
-            allProfiles[x] = []
+            pass
         x+=1
-    profileSelected = int(profiles[10])
-    if profiles[11] == 'True':
-        closeLauncher = True
-    else:
-        closeLauncher = False
     checkWinReg()
     return
 
@@ -80,28 +78,10 @@ def saveToWinReg():
     winregWrite.Close
 
 def saveProfiles():
-    global currentProfile
-    currentProfile = allProfiles[profileSelected]
-    read = open('launcher/profiles.dat', 'r').readlines()
-    profileDictionary = {}
-    x=0
-    while x < 10:
-        read[x] = str(allProfiles[x]) + '\n'
-        profileDictionary[f'profile_{x}'] = allProfiles[x]
-        x+=1
-    read[10] = str(profileSelected) + '\n'
-    read[11] = str(closeLauncher)
-    profileDictionary['profileSelected'] = profileSelected
-    profileDictionary['closeLauncher'] = closeLauncher
-
-    with open('launcher/data.txt', "w") as file:
-        json.dump(profileDictionary, file)
-        
-    with open('launcher/data.txt', "r") as file:
-        profileDictionary = json.load(file)
-
-    with open('launcher/profiles.dat', 'w') as write:
-        write.writelines(read)
+    global profileDictionary, currentProfile
+    currentProfile = profileDictionary[f'profile_{profileDictionary['profileSelected']}']
+    with open('launcher/config.json', "w") as file:
+        json.dump(profileDictionary, file)    
     return
 
 def drawButton(text, font, textColour, x, y):
@@ -158,7 +138,7 @@ def drawSlider():
     return
 
 def profileMenu():
-    global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue, profileSelected, allProfiles, currentProfile
+    global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue, profileDictionary, currentProfile
     bigSlome = False
 
     syncValues()
@@ -167,7 +147,7 @@ def profileMenu():
     while profileMenuRunning == True:
         pygame.draw.rect(screen, [0,0,0], [0,0,1200,720])
         screen.blit(pygame.image.load('launcher/largeMenu.png'), (15,15))
-        screen.blit((smallTextFont.render(f'Profile: {profileSelected}', True, (255, 255, 255))), (26, 674))
+        screen.blit((smallTextFont.render(f'Profile: {profileDictionary['profileSelected']}', True, (255, 255, 255))), (26, 674))
         drawUsername()
         drawSlome()
         drawSlider()
@@ -203,20 +183,20 @@ def profileMenu():
                         inputUsername = True
                         usernameTestValue = currentProfile[0]
                     elif 37 <= mousePosition[0] <= 352 and  175 <= mousePosition[1] <= 215:
-                        allProfiles[profileSelected] = currentProfile
+                        profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = currentProfile
                         if 37 <= mousePosition[0] <= 57:
-                            profileSelected -= 1
-                            if profileSelected < 0:
-                                profileSelected = 0
+                            profileDictionary['profileSelected'] -= 1
+                            if profileDictionary['profileSelected'] < 0:
+                                profileDictionary['profileSelected'] = 0
                         elif 332 <= mousePosition[0] <= 352:
-                            profileSelected += 1
-                            if profileSelected > 9:
-                                profileSelected = 9
-                        if allProfiles[profileSelected] == []:
-                            allProfiles[profileSelected] = [f'Profile {profileSelected}', (255,255,255)]
+                            profileDictionary['profileSelected'] += 1
+                            if profileDictionary['profileSelected'] > 9:
+                                profileDictionary['profileSelected'] = 9
+                        if profileDictionary[f'profile_{profileDictionary['profileSelected']}'] == []:
+                            profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = [f'Profile {profileDictionary['profileSelected']}', (255,255,255)]
                         saveProfiles()
                         saveToWinReg()
-                        
+
             elif event.type == pygame.MOUSEBUTTONUP:
                 sliding = False
 
@@ -265,7 +245,7 @@ def profileMenu():
 
         if sliding == True or inputNumber == True or inputUsername == True:
             saveToWinReg()
-            allProfiles[profileSelected] = currentProfile
+            profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = currentProfile
             saveProfiles()
         
         pygame.display.update()
@@ -284,9 +264,9 @@ while running:
 
     screen.blit((smallTextFont.render(launcherVersion, True, (255,255,255))), (14, 690))
 
-    if closeLauncher == True:
+    if profileDictionary['closeLauncher'] == True:
         pygame.draw.lines(screen, [255,255,255], True, [(20,420), (40,420), (40,400), (20,400)])
-    elif closeLauncher == False:
+    elif profileDictionary['closeLauncher'] == False:
         pygame.draw.rect(screen, [255,255,255], [20, 400, 20, 20])
     screen.blit((smallTextFont.render('Keep launcher open', True, (255,255,255))), (50, 402))
 
@@ -313,26 +293,26 @@ while running:
                         if 550 <= mousePosition[0] <= 1050 and versions[x][3] <= mousePosition[1] <= versions[x][3] + 50:
                             try:
                                 subprocess.Popen(versions[x][1])
-                                if closeLauncher == True:
+                                if profileDictionary['closeLauncher'] == True:
                                     time.sleep(2)
                                     running = False
                             except:
                                 try:
                                     subprocess.Popen(str('versions/'+versionList[x] + '/survival project.exe'))
-                                    if closeLauncher == True:
+                                    if profileDictionary['closeLauncher'] == True:
                                         time.sleep(2)
                                         running = False
                                 except:
                                     try:
                                         subprocess.Popen(str('versions/'+versionList[x] + '/SlomeSlomeSlomeSlome.exe'))
-                                        if closeLauncher == True:
+                                        if profileDictionary['closeLauncher'] == True:
                                             time.sleep(2)
                                             running = False
                                     except:
                                         error('No Slome.exe file found at path')
                         x+=1
                 elif 20 <= mousePosition[0] <= 40 and 400 <= mousePosition[1] <= 420:
-                    closeLauncher = not closeLauncher
+                    profileDictionary['closeLauncher'] = not profileDictionary['closeLauncher']
                     saveProfiles()
                 elif 72 <= mousePosition[0] <= 322 and 80 <= mousePosition[1] <= 330:
                     profileMenu()
