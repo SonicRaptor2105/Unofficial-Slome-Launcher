@@ -41,6 +41,7 @@ rgbKeyValues = ['colour_r_h2463154688','colour_g_h2463154709','colour_b_h2463154
 windowsSlomePath = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,r"Software\ZeroEightStudios\Slome")
 currentProfile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstrip('\x00'), (winreg.EnumValue(windowsSlomePath, 26)[1], winreg.EnumValue(windowsSlomePath, 27)[1], winreg.EnumValue(windowsSlomePath, 28)[1])]
 windowsSlomePath.Close
+localLowFilePath = os.getenv('USERPROFILE')+'\AppData\LocalLow'
 
 button = pygame.image.load('launcher/button.png')
 textFont = pygame.font.SysFont(None, 40)
@@ -150,7 +151,32 @@ def checkForFileUpdates():
     if loops < 1000:
         return
     else:
-        print('test')
+        with open(localLowFilePath + '\Robotnik08\Slome\Player.log') as log:
+            log = log.readlines()
+            x = 0
+            while x < len(log):
+                if 'Level saved as' in log[x]:
+                    print(log[x])
+                x+=1
+        versionKeyword = ''
+        with open('versions/Slome pre-indev7/Slome_Data/globalgamemanagers','rb') as findVersion:
+            findVersion = findVersion.readlines()
+            x = 0
+            while x < len(findVersion):
+                checkVersion = findVersion[x].decode('ASCII','ignore').lower()
+                if ('pre-demo' in  checkVersion):
+                    versionKeyword = 'pre-demo'
+                    break
+                elif ('indev' in checkVersion):
+                    versionKeyword = 'indev'
+                    break
+                elif ('alpha' in checkVersion):
+                    versionKeyword = 'alpha'
+                    break
+                x+=1
+        versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()
+        print(versionLoaded)
+        print('done')
         loops = 0
 
 def profileMenu():
