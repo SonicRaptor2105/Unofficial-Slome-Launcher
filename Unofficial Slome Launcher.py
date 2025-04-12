@@ -7,6 +7,8 @@ import json
 
 launcherVersion = 'a0.1.7'
 
+#print(time.ctime(os.path.getmtime('launcher\data.txt')))
+
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
 pygame.display.set_caption("SonicRaptor's Unofficial Slome Launcher")
@@ -19,6 +21,8 @@ versions = []
 
 profileDictionary = {}
 currentProfile = []
+
+loops = 0
 
 sprite = pygame.image
 
@@ -140,6 +144,15 @@ def drawSlider():
         x+=1
     return
 
+def checkForFileUpdates():
+    global loops
+    loops+=1
+    if loops < 1000:
+        return
+    else:
+        print('test')
+        loops = 0
+
 def profileMenu():
     global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue, profileDictionary, currentProfile
     bigSlome = False
@@ -205,6 +218,11 @@ def profileMenu():
                             profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = [f'Profile {profileDictionary['profileSelected']}', (255,255,255)]
                         saveProfiles()
                         saveToWinReg()
+                        (1060,44)
+                    elif 800 <= mousePosition[0]:
+                        if 1060 <= mousePosition[0] <= 1076 and 44 <= mousePosition[1] <= 60:
+                            subprocess.Popen('explorer "launcher"')
+                            print('test')
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 sliding = False
@@ -256,7 +274,8 @@ def profileMenu():
             saveToWinReg()
             profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = currentProfile
             saveProfiles()
-        
+            
+        checkForFileUpdates()
         pygame.display.update()
 
 
@@ -339,6 +358,7 @@ while running:
                 scroll += event.y * 15
 
     versions = []
+    checkForFileUpdates()
     pygame.display.update()
 
 pygame.quit()
