@@ -174,7 +174,10 @@ def checkForFileUpdates():
                     versionKeyword = 'alpha'
                     break
                 x+=1
-        versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()
+        if versionKeyword == '' or len(versionKeyword) > 12:
+            versionLoaded = 'Unknown or Modified version'
+        else:
+            versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()
         print(versionLoaded)
         print('done')
         loops = 0
