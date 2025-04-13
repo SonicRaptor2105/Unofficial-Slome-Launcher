@@ -167,6 +167,9 @@ def checkForFileUpdates():
                 if ('pre-demo' in  checkVersion):
                     versionKeyword = 'pre-demo'
                     break
+                elif ('pre-indev' in checkVersion):
+                    versionKeyword = 'pre-indev'
+                    break
                 elif ('indev' in checkVersion):
                     versionKeyword = 'indev'
                     break
