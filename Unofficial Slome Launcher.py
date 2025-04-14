@@ -4,6 +4,10 @@ import subprocess
 import time
 import winreg
 import json
+import win32gui
+import win32process
+import psutil
+import re
 
 launcherVersion = 'a0.1.7'
 
@@ -151,37 +155,73 @@ def checkForFileUpdates():
     if loops < 1000:
         return
     else:
+        versionKeyword = ''
+        versionPath = ''
+        slomeVersion = ''
+        try:
+            _, currentOpenWindow = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())
+            process = psutil.Process(currentOpenWindow).exe()
+            print(process)
+            if 'slome' in process.lower():
+                if 'unofficial slome launcher' in process.lower():
+                    if 'slomeslomeslomeslome' in process.lower():
+                        versionPath = process[process.find('versions') : process.find('\\SlomeSlomeSlomeSlome.exe')]
+                        slomeVersion = 'SlomeSlomeSlomeSlome'
+                    else:
+                        versionPath = process[process.find('versions'):process.lower().find('\\slome.exe')]
+                        slomeVersion = 'Slome'
+                print(versionPath)
+            else:
+                versionPath = ''
+        except:
+            pass
+        if versionPath != '':
+            print(versionPath+f'\{slomeVersion}_Data\globalgamemanagers')
+            with open(versionPath+f'\{slomeVersion}_Data\globalgamemanagers','rb') as findVersion:
+                findVersion = findVersion.readlines()
+                x = 0       
+                while x < len(findVersion):
+                    checkVersion = findVersion[x].decode('UTF-8','ignore').lower().replace('\x00','')
+                    checkVersion = re.sub(r'[^\x20-\x7E]', '', checkVersion)
+                    if 'pre-demo' in  checkVersion:
+                        versionKeyword = 'pre-demo'
+                        break
+                    elif 'pre-indev' in checkVersion:
+                        versionKeyword = 'pre-indev'
+                        break
+                    elif 'indev' in checkVersion:
+                        versionKeyword = 'indev'
+                        break
+                    elif 'alpha' in checkVersion:
+                        versionKeyword = 'alpha'
+                        break
+                    elif 'ff@' in checkVersion:
+                        #This is if Robotnik decides to swap his naming convention for no reason 2 years into the project
+                        versionKeyword = 'ff@'
+                        break
+                    x+=1
+                print(versionKeyword)
+            if versionKeyword == '' or len(versionKeyword) > 12:
+                versionLoaded = 'Unknown or Modified version'
+            else:
+                if versionKeyword == 'ff@':
+                    endPos = checkVersion.find('ff')
+                    for i in range(endPos -1, -1, -1):
+                        if not checkVersion[i].isdigit() and not checkVersion[i] == '' and not checkVersion[i] == '.':
+                            versionLoaded = checkVersion[i + 1 : endPos]
+                            versionLoaded = 'alpha ' + versionLoaded
+                            break
+                else:
+                    versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()                  
+            print(versionLoaded)
         with open(localLowFilePath + '\Robotnik08\Slome\Player.log') as log:
             log = log.readlines()
             x = 0
             while x < len(log):
                 if 'Level saved as' in log[x]:
                     print(log[x])
-                x+=1
-        versionKeyword = ''
-        with open('versions/Slome pre-indev7/Slome_Data/globalgamemanagers','rb') as findVersion:
-            findVersion = findVersion.readlines()
-            x = 0
-            while x < len(findVersion):
-                checkVersion = findVersion[x].decode('ASCII','ignore').lower()
-                if ('pre-demo' in  checkVersion):
-                    versionKeyword = 'pre-demo'
-                    break
-                elif ('pre-indev' in checkVersion):
-                    versionKeyword = 'pre-indev'
-                    break
-                elif ('indev' in checkVersion):
-                    versionKeyword = 'indev'
-                    break
-                elif ('alpha' in checkVersion):
-                    versionKeyword = 'alpha'
                     break
                 x+=1
-        if versionKeyword == '' or len(versionKeyword) > 12:
-            versionLoaded = 'Unknown or Modified version'
-        else:
-            versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()
-        print(versionLoaded)
         print('done')
         loops = 0
 
@@ -253,7 +293,7 @@ def profileMenu():
                         (1060,44)
                     elif 800 <= mousePosition[0]:
                         if 1060 <= mousePosition[0] <= 1076 and 44 <= mousePosition[1] <= 60:
-                            subprocess.Popen('explorer "launcher"')
+                            subprocess.run('explorer "launcher"')
                             print('test')
 
             elif event.type == pygame.MOUSEBUTTONUP:
@@ -332,7 +372,7 @@ while running:
 
     x = 0
     while x < len(versionList):
-        versions.append([versionList[x], ('versions/'+versionList[x] + '/Slome.exe'), 550, x * 60 + 20 + scroll])
+        versions.append([versionList[x], ('versions\\'+versionList[x] + '\Slome.exe'), 550, x * 60 + 20 + scroll])
         if len(versionList[x]) > 28:
             versions[-1][0] = versionList[x][:28] + '...'
         drawButton(versions[x][0],textFont,(255,255,255),versions[x][2], versions[x][3])
@@ -352,19 +392,19 @@ while running:
                     while x < len(versionList):
                         if 550 <= mousePosition[0] <= 1050 and versions[x][3] <= mousePosition[1] <= versions[x][3] + 50:
                             try:
-                                subprocess.Popen(versions[x][1])
+                                os.startfile(versions[x][1])
                                 if profileDictionary['closeLauncher'] == True:
                                     time.sleep(2)
                                     running = False
                             except:
                                 try:
-                                    subprocess.Popen(str('versions/'+versionList[x] + '/survival project.exe'))
+                                    os.startfile(str('versions\\'+versionList[x] + '\survival project.exe'))
                                     if profileDictionary['closeLauncher'] == True:
                                         time.sleep(2)
                                         running = False
                                 except:
                                     try:
-                                        subprocess.Popen(str('versions/'+versionList[x] + '/SlomeSlomeSlomeSlome.exe'))
+                                        os.startfile(str('versions\\'+versionList[x] + '\SlomeSlomeSlomeSlome.exe'))
                                         if profileDictionary['closeLauncher'] == True:
                                             time.sleep(2)
                                             running = False
