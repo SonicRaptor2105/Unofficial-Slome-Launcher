@@ -1,6 +1,5 @@
 import pygame
 import os
-import subprocess
 import time
 import winreg
 import json
@@ -9,9 +8,7 @@ import win32process
 import psutil
 import re
 
-launcherVersion = 'a0.1.7'
-
-#print(time.ctime(os.path.getmtime('launcher\data.txt')))
+launcherVersion = 'a0.1.8'
 
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
@@ -27,6 +24,7 @@ profileDictionary = {}
 currentProfile = []
 
 loops = 0
+versionLoaded = ''
 
 sprite = pygame.image
 
@@ -150,7 +148,7 @@ def drawSlider():
     return
 
 def checkForFileUpdates():
-    global loops
+    global loops, versionLoaded
     loops+=1
     if loops < 1000:
         return
@@ -158,6 +156,8 @@ def checkForFileUpdates():
         versionKeyword = ''
         versionPath = ''
         slomeVersion = ''
+        worldSave = ''
+
         try:
             _, currentOpenWindow = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())
             process = psutil.Process(currentOpenWindow).exe()
@@ -214,14 +214,37 @@ def checkForFileUpdates():
                 else:
                     versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()                  
             print(versionLoaded)
-        with open(localLowFilePath + '\Robotnik08\Slome\Player.log') as log:
-            log = log.readlines()
+        with open(localLowFilePath + '\Robotnik08\Slome\Player.log') as oldLog:
+            oldLog = oldLog.readlines()
             x = 0
-            while x < len(log):
-                if 'Level saved as' in log[x]:
-                    print(log[x])
-                    break
+            while x < len(oldLog):
+                if 'Level saved as' in oldLog[x]:
+                    worldSave = oldLog[x].replace('Level saved as ', '').replace('/level.dat', '').replace('\n','')
                 x+=1
+        if os.path.getmtime(localLowFilePath + '\Robotnik08\Slome\Player.log') < os.path.getmtime(localLowFilePath + '\ZeroEightStudios\Slome\Player.log'):
+            with open(localLowFilePath + '\ZeroEightStudios\Slome\Player.log') as newLog:
+                newLog = newLog.readlines()
+                x = 0
+                while x < len(newLog):
+                    if 'Level loaded from' in newLog[x]:
+                        worldSave = newLog[x].replace('Level loaded from: ', '').replace('\n','')
+                    elif 'Level saved as' in newLog[x]:
+                        worldSave = newLog[x].replace('Level saved as ', '').replace('/level.dat', '').replace('\n','')
+                    x+=1
+        if worldSave != '':
+            checkIfSaved = os.listdir(worldSave)
+            x=0
+            while x < len(checkIfSaved):
+                try:
+                    if os.path.getmtime(worldSave + '\\' + checkIfSaved[x]) > os.path.getmtime(worldSave + '\latestLaunch.txt'):
+                        with open(worldSave + '\latestLaunch.txt', 'w') as latestLaunch:
+                            latestLaunch.write(versionLoaded)
+                        break
+                except:
+                    with open(worldSave + '\latestLaunch.txt', 'w') as latestLaunch:
+                        latestLaunch.write(versionLoaded)
+                x+=1
+            print(worldSave)
         print('done')
         loops = 0
 
@@ -293,7 +316,7 @@ def profileMenu():
                         (1060,44)
                     elif 800 <= mousePosition[0]:
                         if 1060 <= mousePosition[0] <= 1076 and 44 <= mousePosition[1] <= 60:
-                            subprocess.run('explorer "launcher"')
+                            os.startfile('launcher')
                             print('test')
 
             elif event.type == pygame.MOUSEBUTTONUP:
