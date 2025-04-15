@@ -157,6 +157,7 @@ def checkForFileUpdates():
         versionPath = ''
         slomeVersion = ''
         worldSave = ''
+        logLocation = ''
 
         try:
             _, currentOpenWindow = win32process.GetWindowThreadProcessId(win32gui.GetForegroundWindow())
@@ -214,23 +215,28 @@ def checkForFileUpdates():
                 else:
                     versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()                  
             print(versionLoaded)
-        with open(localLowFilePath + '\Robotnik08\Slome\Player.log') as oldLog:
-            oldLog = oldLog.readlines()
+
+        ogLog = os.path.getmtime(localLowFilePath + '\Robotnik08\Slome\Player.log')
+        newLog = os.path.getmtime(localLowFilePath + '\ZeroEightStudios\Slome\Player.log')
+        aprilFoolsLog = os.path.getmtime(localLowFilePath + '\ZeroEightStudios\SlomeSlomeSlomeSlome\Player.log')
+
+        if ogLog > newLog and ogLog > aprilFoolsLog:
+            logLocation = localLowFilePath + '\Robotnik08\Slome\Player.log'
+        elif newLog > ogLog and newLog > aprilFoolsLog:
+            logLocation = localLowFilePath + '\ZeroEightStudios\Slome\Player.log'
+        else:
+            logLocation = localLowFilePath + '\ZeroEightStudios\SlomeSlomeSlomeSlome\Player.log'
+
+        with open(logLocation) as log:
+            log = log.readlines()
             x = 0
-            while x < len(oldLog):
-                if 'Level saved as' in oldLog[x]:
-                    worldSave = oldLog[x].replace('Level saved as ', '').replace('/level.dat', '').replace('\n','')
+            while x < len(log):
+                if 'Level loaded from' in log[x]:
+                    worldSave = log[x].replace('Level loaded from: ', '').replace('\n','')
+                elif 'Level saved as' in log[x]:
+                    worldSave = log[x].replace('Level saved as ', '').replace('/level.dat', '').replace('\n','')
                 x+=1
-        if os.path.getmtime(localLowFilePath + '\Robotnik08\Slome\Player.log') < os.path.getmtime(localLowFilePath + '\ZeroEightStudios\Slome\Player.log'):
-            with open(localLowFilePath + '\ZeroEightStudios\Slome\Player.log') as newLog:
-                newLog = newLog.readlines()
-                x = 0
-                while x < len(newLog):
-                    if 'Level loaded from' in newLog[x]:
-                        worldSave = newLog[x].replace('Level loaded from: ', '').replace('\n','')
-                    elif 'Level saved as' in newLog[x]:
-                        worldSave = newLog[x].replace('Level saved as ', '').replace('/level.dat', '').replace('\n','')
-                    x+=1
+
         if worldSave != '':
             checkIfSaved = os.listdir(worldSave)
             x=0
