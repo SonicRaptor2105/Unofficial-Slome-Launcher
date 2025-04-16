@@ -7,6 +7,7 @@ import win32gui
 import win32process
 import psutil
 import re
+import shutil
 
 launcherVersion = 'a0.1.8'
 
@@ -25,6 +26,7 @@ currentProfile = []
 
 loops = 0
 versionLoaded = ''
+versionKeyword = ''
 
 sprite = pygame.image
 
@@ -147,13 +149,107 @@ def drawSlider():
         x+=1
     return
 
+def swapBetweenLauncherSaving(useLauncherSaving):
+    dirs = ['\Robotnik08\Slome\saves', '\ZeroEightStudios\Slome\saves', '\ZeroEightStudios\SlomeSlomeSlomeSlome\saves']
+    if useLauncherSaving == True:
+        if not os.path.exists('launcher\saves'):
+            os.makedirs('launcher\saves')
+        x = 0
+        while x < len(dirs):
+            try:
+                shutil.copytree(localLowFilePath + dirs[x], 'launcher\saves', copy_function=shutil.copy2, dirs_exist_ok=True)
+                shutil.rmtree(localLowFilePath + dirs[x])
+            except:
+                pass
+            os.symlink(os.getcwd() + '\launcher\saves', localLowFilePath + dirs[x], target_is_directory=True)
+            x+=1
+    elif useLauncherSaving == False:
+        x = 0
+        while x < len(dirs):
+            os.unlink(localLowFilePath + dirs[x])
+            os.makedirs(localLowFilePath + dirs[x])
+            x+=1
+        saves = os.listdir('launcher\saves')
+        print(saves)
+        rSlome = []
+        z8Slome = []
+        z8Slomex4 = []
+        x = 0
+        while x < len(saves):
+            try:
+                with open(f'launcher\saves\{saves[x]}\latestLaunch.txt') as file:
+                    line = file.readline()
+                    if 'pre' in line:
+                        rSlome.append(saves[x])
+                    elif '+' in line:
+                        z8Slomex4.append(saves[x])
+                    else:
+                        z8Slome.append(saves[x])
+            except:
+                z8Slome.append(saves[x])
+            x+=1
+        x = 0
+        while x < len(rSlome):
+            shutil.copytree(f'launcher\saves\{rSlome[x]}', localLowFilePath + f'\Robotnik08\Slome\saves\{rSlome[x]}', copy_function=shutil.copy2, dirs_exist_ok=True)
+            x+=1
+        x = 0
+        while x < len(z8Slome):
+            shutil.copytree(f'launcher\saves\{z8Slome[x]}', localLowFilePath + f'\ZeroEightStudios\Slome\saves\{z8Slome[x]}', copy_function=shutil.copy2, dirs_exist_ok=True)
+            x+=1
+        x = 0
+        while x < len(z8Slomex4):
+            shutil.copytree(f'launcher\saves\{z8Slomex4[x]}', localLowFilePath + f'\ZeroEightStudios\SlomeSlomeSlomeSlome\saves\{z8Slomex4[x]}', copy_function=shutil.copy2, dirs_exist_ok=True)
+            x+=1
+            
+    return
+
+def checkLoadedVersion(versionPath):
+    global versionLoaded, versionKeyword
+    with open(versionPath,'rb') as findVersion:
+        findVersion = findVersion.readlines()
+        x = 0       
+        while x < len(findVersion):
+            checkVersion = findVersion[x].decode('UTF-8','ignore').lower().replace('\x00','')
+            checkVersion = re.sub(r'[^\x20-\x7E]', '', checkVersion)
+            if 'pre-demo' in  checkVersion:
+                versionKeyword = 'pre-demo'
+                break
+            elif 'pre-indev' in checkVersion:
+                versionKeyword = 'pre-indev'
+                break
+            elif 'indev' in checkVersion:
+                versionKeyword = 'indev'
+                break
+            elif 'alpha' in checkVersion:
+                versionKeyword = 'alpha'
+                break
+            elif 'ff@' in checkVersion:
+                #This is if Robotnik decides to swap his naming convention for no reason 2 years into the project
+                versionKeyword = 'ff@'
+                break
+            x+=1
+        print(versionKeyword)
+    if versionKeyword == '' or len(versionKeyword) > 12:
+        versionLoaded = 'Unknown or Modified version'
+    else:
+        if versionKeyword == 'ff@':
+            endPos = checkVersion.find('ff')
+            for i in range(endPos -1, -1, -1):
+                if not checkVersion[i].isdigit() and not checkVersion[i] == '' and not checkVersion[i] == '.':
+                    versionLoaded = checkVersion[i + 1 : endPos]
+                    versionLoaded = 'alpha ' + versionLoaded
+                    break
+        else:
+            versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()
+    return()
+
+
 def checkForFileUpdates():
-    global loops, versionLoaded
+    global loops, versionLoaded, versionKeyword
     loops+=1
     if loops < 1000:
         return
     else:
-        versionKeyword = ''
         versionPath = ''
         slomeVersion = ''
         worldSave = ''
@@ -177,43 +273,7 @@ def checkForFileUpdates():
         except:
             pass
         if versionPath != '':
-            print(versionPath+f'\{slomeVersion}_Data\globalgamemanagers')
-            with open(versionPath+f'\{slomeVersion}_Data\globalgamemanagers','rb') as findVersion:
-                findVersion = findVersion.readlines()
-                x = 0       
-                while x < len(findVersion):
-                    checkVersion = findVersion[x].decode('UTF-8','ignore').lower().replace('\x00','')
-                    checkVersion = re.sub(r'[^\x20-\x7E]', '', checkVersion)
-                    if 'pre-demo' in  checkVersion:
-                        versionKeyword = 'pre-demo'
-                        break
-                    elif 'pre-indev' in checkVersion:
-                        versionKeyword = 'pre-indev'
-                        break
-                    elif 'indev' in checkVersion:
-                        versionKeyword = 'indev'
-                        break
-                    elif 'alpha' in checkVersion:
-                        versionKeyword = 'alpha'
-                        break
-                    elif 'ff@' in checkVersion:
-                        #This is if Robotnik decides to swap his naming convention for no reason 2 years into the project
-                        versionKeyword = 'ff@'
-                        break
-                    x+=1
-                print(versionKeyword)
-            if versionKeyword == '' or len(versionKeyword) > 12:
-                versionLoaded = 'Unknown or Modified version'
-            else:
-                if versionKeyword == 'ff@':
-                    endPos = checkVersion.find('ff')
-                    for i in range(endPos -1, -1, -1):
-                        if not checkVersion[i].isdigit() and not checkVersion[i] == '' and not checkVersion[i] == '.':
-                            versionLoaded = checkVersion[i + 1 : endPos]
-                            versionLoaded = 'alpha ' + versionLoaded
-                            break
-                else:
-                    versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()                  
+            checkLoadedVersion(versionPath+f'\{slomeVersion}_Data\globalgamemanagers')
             print(versionLoaded)
 
         ogLog = os.path.getmtime(localLowFilePath + '\Robotnik08\Slome\Player.log')
@@ -321,9 +381,12 @@ def profileMenu():
                         saveToWinReg()
                         (1060,44)
                     elif 800 <= mousePosition[0]:
-                        if 1060 <= mousePosition[0] <= 1076 and 44 <= mousePosition[1] <= 60:
+                        if 820 <= mousePosition[0] <= 840 and 40 <= mousePosition[1] <= 60:
+                            profileDictionary['useLauncherSaves'] = not profileDictionary['useLauncherSaves']
+                            saveProfiles()
+                            swapBetweenLauncherSaving(profileDictionary['useLauncherSaves'])
+                        elif 1060 <= mousePosition[0] <= 1076 and 44 <= mousePosition[1] <= 60:
                             os.startfile('launcher')
-                            print('test')
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 sliding = False
@@ -376,7 +439,7 @@ def profileMenu():
             profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = currentProfile
             saveProfiles()
             
-        checkForFileUpdates()
+        #checkForFileUpdates()
         pygame.display.update()
 
 
@@ -417,28 +480,29 @@ while running:
                 rgbTestValue = 0
                 inputUsername = False
                 if mousePosition[0] > 400:
+
                     x = 0
                     while x < len(versionList):
                         if 550 <= mousePosition[0] <= 1050 and versions[x][3] <= mousePosition[1] <= versions[x][3] + 50:
-                            try:
-                                os.startfile(versions[x][1])
-                                if profileDictionary['closeLauncher'] == True:
-                                    time.sleep(2)
-                                    running = False
-                            except:
+                            weirdNameCases = [versions[x][1], f'versions\\{versionList[x]}\\survival project.exe', f'versions\\{versionList[x]}\\SlomeSlomeSlomeSlome.exe']
+                            for filePath in weirdNameCases:
                                 try:
-                                    os.startfile(str('versions\\'+versionList[x] + '\survival project.exe'))
+                                    os.startfile(filePath)
                                     if profileDictionary['closeLauncher'] == True:
                                         time.sleep(2)
                                         running = False
+ 
+                                    if filePath == f'versions\\{versionList[x]}\\SlomeSlomeSlomeSlome.exe':
+                                        slome = 'SlomeSlomeSlomeSlome'
+                                    else:
+                                        slome = 'Slome'
+                                    checkLoadedVersion(f'versions\\{versionList[x]}\\{slome}_Data\\globalgamemanagers')
+                                    
+                                    break
                                 except:
-                                    try:
-                                        os.startfile(str('versions\\'+versionList[x] + '\SlomeSlomeSlomeSlome.exe'))
-                                        if profileDictionary['closeLauncher'] == True:
-                                            time.sleep(2)
-                                            running = False
-                                    except:
-                                        error('No Slome.exe file found at path')
+                                    continue
+                            else:
+                                error('No Slome.exe file found at path')
                         x+=1
                 elif 20 <= mousePosition[0] <= 40 and 400 <= mousePosition[1] <= 420:
                     profileDictionary['closeLauncher'] = not profileDictionary['closeLauncher']
@@ -459,7 +523,7 @@ while running:
                 scroll += event.y * 15
 
     versions = []
-    checkForFileUpdates()
+    #checkForFileUpdates()
     pygame.display.update()
 
 pygame.quit()
