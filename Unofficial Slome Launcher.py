@@ -8,10 +8,32 @@ import win32process
 import psutil
 import re
 import shutil
-
-launcherVersion = 'a0.1.9'
+import base64
 
 pygame.init()
+launcherVersion = 'a0.1.10'
+
+try:
+    with open('launcher\data.dat') as images:
+        images = images.readlines()
+        button = pygame.image.fromstring(base64.b64decode(images[0]), (500, 50), 'RGB')
+        folderIcon = pygame.image.fromstring(base64.b64decode(images[1]), (16, 16), 'RGBA')
+        largeMenu = pygame.image.fromstring(base64.b64decode(images[2]), (1200, 720), 'RGBA')
+        leftSide = pygame.image.fromstring(base64.b64decode(images[3]), (400, 720), 'RGBA')
+        rightSide = pygame.image.fromstring(base64.b64decode(images[4]), (800, 720), 'RGB')
+        slomePlaceholder = pygame.image.fromstring(base64.b64decode(images[5]), (250, 250), 'RGBA')
+except:
+    tempDebugScreen = pygame.display.set_mode((600, 100))
+    pygame.display.set_caption('An Error occurred while loading')
+    tempDebugScreen.fill((255, 255, 255))
+    textFont = pygame.font.SysFont(None, 20)
+    tempDebugScreen.blit(textFont.render('Launcher is missing vital files and cannot start. It is recommended to reinstall', True, (0,0,0)), (0, 0))
+    tempDebugScreen.blit(textFont.render('Closing Launcher...', True, (0,0,0)), (0, 20))
+    pygame.display.update()
+    time.sleep(5)
+    pygame.quit()
+    exit()
+
 screen = pygame.display.set_mode((1200, 720))
 pygame.display.set_caption("SonicRaptor's Unofficial Slome Launcher")
 pygame.display.set_icon(pygame.image.load('launcher/slomeIcon.ico'))
@@ -47,7 +69,6 @@ currentProfile = [winreg.EnumValue(windowsSlomePath, 25)[1].decode('utf-8').rstr
 windowsSlomePath.Close
 localLowFilePath = os.getenv('USERPROFILE')+'\AppData\LocalLow'
 
-button = pygame.image.load('launcher/button.png')
 textFont = pygame.font.SysFont(None, 40)
 smallTextFont = pygame.font.SysFont(None, 30)
 
@@ -116,7 +137,7 @@ def drawUsername():
     return
 
 def drawSlome():
-    sprite = pygame.image.load('launcher/slomePlaceholder.png').convert()
+    sprite = slomePlaceholder.convert()
     if currentProfile[1] == (0,0,0):
         currentProfile[1] = (1,1,1)
     sprite.set_colorkey((0,0,0))
@@ -343,7 +364,7 @@ def profileMenu():
 
     profileMenuRunning = True
     while profileMenuRunning == True:
-        screen.blit(pygame.image.load('launcher/largeMenu.png'), (0,0))
+        screen.blit(largeMenu, (0,0))
         screen.blit((smallTextFont.render(f'Profile: {profileDictionary['profileSelected']}', True, (255, 255, 255))), (14, 690))
         screen.blit(smallTextFont.render('?', True, (255,255,255)), (1170, 16))
         drawUsername()
@@ -356,7 +377,7 @@ def profileMenu():
         elif profileDictionary['useLauncherSaves'] == True:
             pygame.draw.rect(screen, [255,255,255], [820, 40, 20, 20])
         screen.blit((smallTextFont.render('Use Launcher Saves', True, (255,255,255))), (855, 42))
-        screen.blit(pygame.image.load('launcher/folderIcon.png'), (1060,44))
+        screen.blit(folderIcon, (1060,44))
 
         mousePosition = pygame.mouse.get_pos() 
         for event in pygame.event.get():
@@ -463,14 +484,12 @@ def profileMenu():
         checkForFileUpdates()
         pygame.display.update()
 
-
-
 syncValues()
 running = True
 while running:
     screen.fill('white')
-    screen.blit(pygame.image.load('launcher/leftSide.png'), (0,0))
-    screen.blit(pygame.image.load('launcher/rightSide.png'), (400,0))
+    screen.blit(leftSide, (0,0))
+    screen.blit(rightSide, (400,0))
 
     drawUsername()
     drawSlome()
