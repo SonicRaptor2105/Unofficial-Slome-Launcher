@@ -9,7 +9,7 @@ import psutil
 import re
 import shutil
 
-launcherVersion = 'a0.1.8'
+launcherVersion = 'a0.1.9'
 
 pygame.init()
 screen = pygame.display.set_mode((1200, 720))
@@ -241,7 +241,7 @@ def checkLoadedVersion(versionPath):
                     break
         else:
             versionLoaded = checkVersion[checkVersion.find(versionKeyword) : checkVersion.find('ff')].strip()
-    return()
+    return
 
 
 def checkForFileUpdates():
@@ -276,9 +276,18 @@ def checkForFileUpdates():
             checkLoadedVersion(versionPath+f'\{slomeVersion}_Data\globalgamemanagers')
             print(versionLoaded)
 
-        ogLog = os.path.getmtime(localLowFilePath + '\Robotnik08\Slome\Player.log')
-        newLog = os.path.getmtime(localLowFilePath + '\ZeroEightStudios\Slome\Player.log')
-        aprilFoolsLog = os.path.getmtime(localLowFilePath + '\ZeroEightStudios\SlomeSlomeSlomeSlome\Player.log')
+        if os.path.isfile(localLowFilePath + '\Robotnik08\Slome\Player.log'):
+            ogLog = os.path.getmtime(localLowFilePath + '\Robotnik08\Slome\Player.log')
+        else:
+            ogLog = 0
+        if os.path.isfile(localLowFilePath + '\ZeroEightStudios\Slome\Player.log'):
+            newLog = os.path.getmtime(localLowFilePath + '\ZeroEightStudios\Slome\Player.log')
+        else:
+            newLog = 0
+        if os.path.isfile(localLowFilePath + '\ZeroEightStudios\SlomeSlomeSlomeSlome\Player.log'):
+            aprilFoolsLog = os.path.getmtime(localLowFilePath + '\ZeroEightStudios\SlomeSlomeSlomeSlome\Player.log')
+        else:
+            aprilFoolsLog = 0
 
         if ogLog > newLog and ogLog > aprilFoolsLog:
             logLocation = localLowFilePath + '\Robotnik08\Slome\Player.log'
@@ -311,6 +320,18 @@ def checkForFileUpdates():
                         latestLaunch.write(versionLoaded)
                 x+=1
             print(worldSave)
+        
+        if not os.path.exists('launcher\screenshots'):
+            os.makedirs('launcher\screenshots')
+        dirs = ['\Robotnik08\Slome\screenshots', '\ZeroEightStudios\Slome\screenshots', '\ZeroEightStudios\SlomeSlomeSlomeSlome\screenshots']
+        x=0
+        while x < len(dirs):
+            try:
+                shutil.copytree(localLowFilePath + dirs[x], 'launcher\screenshots', copy_function=shutil.copy2, dirs_exist_ok=True)
+            except:
+                pass
+            x+=1
+
         print('done')
         loops = 0
 
@@ -439,7 +460,7 @@ def profileMenu():
             profileDictionary[f'profile_{profileDictionary['profileSelected']}'] = currentProfile
             saveProfiles()
             
-        #checkForFileUpdates()
+        checkForFileUpdates()
         pygame.display.update()
 
 
@@ -491,7 +512,7 @@ while running:
                                     if profileDictionary['closeLauncher'] == True:
                                         time.sleep(2)
                                         running = False
- 
+
                                     if filePath == f'versions\\{versionList[x]}\\SlomeSlomeSlomeSlome.exe':
                                         slome = 'SlomeSlomeSlomeSlome'
                                     else:
@@ -523,7 +544,7 @@ while running:
                 scroll += event.y * 15
 
     versions = []
-    #checkForFileUpdates()
+    checkForFileUpdates()
     pygame.display.update()
 
 pygame.quit()
