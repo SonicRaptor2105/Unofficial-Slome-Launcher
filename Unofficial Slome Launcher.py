@@ -9,9 +9,10 @@ import psutil
 import re
 import shutil
 import base64
+import datetime
 
 pygame.init()
-launcherVersion = 'a0.1.10'
+launcherVersion = 'a0.2.0'
 
 try:
     with open('launcher\data.dat') as images:
@@ -22,6 +23,10 @@ try:
         leftSide = pygame.image.fromstring(base64.b64decode(images[3]), (400, 720), 'RGBA')
         rightSide = pygame.image.fromstring(base64.b64decode(images[4]), (800, 720), 'RGB')
         slomePlaceholder = pygame.image.fromstring(base64.b64decode(images[5]), (250, 250), 'RGBA')
+
+    screen = pygame.display.set_mode((1200, 720))
+    pygame.display.set_caption("SonicRaptor's Unofficial Slome Launcher")
+    pygame.display.set_icon(pygame.image.load('launcher/slomeIcon.ico'))
 except:
     tempDebugScreen = pygame.display.set_mode((600, 100))
     pygame.display.set_caption('An Error occurred while loading')
@@ -30,14 +35,12 @@ except:
     tempDebugScreen.blit(textFont.render('Launcher is missing vital files and cannot start. It is recommended to reinstall', True, (0,0,0)), (0, 0))
     tempDebugScreen.blit(textFont.render('Closing Launcher...', True, (0,0,0)), (0, 20))
     pygame.display.update()
-    time.sleep(5)
+    time.sleep(4)
     pygame.quit()
     exit()
 
-screen = pygame.display.set_mode((1200, 720))
-pygame.display.set_caption("SonicRaptor's Unofficial Slome Launcher")
-pygame.display.set_icon(pygame.image.load('launcher/slomeIcon.ico'))
-
+if not os.path.exists('versions'):
+    os.makedirs('versions')
 versionList = os.listdir('versions')
 
 scroll = 0
@@ -172,12 +175,16 @@ def drawSlider():
 
 def swapBetweenLauncherSaving(useLauncherSaving):
     dirs = ['\Robotnik08\Slome\saves', '\ZeroEightStudios\Slome\saves', '\ZeroEightStudios\SlomeSlomeSlomeSlome\saves']
+    if not os.path.exists(r'launcher\backups'):
+        os.makedirs(r'launcher\backups')
     if useLauncherSaving == True:
         if not os.path.exists('launcher\saves'):
             os.makedirs('launcher\saves')
         x = 0
         while x < len(dirs):
             try:
+                timeStamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                shutil.copytree(localLowFilePath + dirs[x], f'launcher\\backups\{dirs[x] + timeStamp}', copy_function=shutil.copy2)
                 shutil.copytree(localLowFilePath + dirs[x], 'launcher\saves', copy_function=shutil.copy2, dirs_exist_ok=True)
                 shutil.rmtree(localLowFilePath + dirs[x])
             except:
@@ -328,19 +335,20 @@ def checkForFileUpdates():
                 x+=1
 
         if worldSave != '':
-            checkIfSaved = os.listdir(worldSave)
-            x=0
-            while x < len(checkIfSaved):
-                try:
-                    if os.path.getmtime(worldSave + '\\' + checkIfSaved[x]) > os.path.getmtime(worldSave + '\latestLaunch.txt'):
+            if os.path.exists(worldSave):
+                checkIfSaved = os.listdir(worldSave)
+                x=0
+                while x < len(checkIfSaved):
+                    try:
+                        if os.path.getmtime(worldSave + '\\' + checkIfSaved[x]) > os.path.getmtime(worldSave + '\latestLaunch.txt'):
+                            with open(worldSave + '\latestLaunch.txt', 'w') as latestLaunch:
+                                latestLaunch.write(versionLoaded)
+                            break
+                    except:
                         with open(worldSave + '\latestLaunch.txt', 'w') as latestLaunch:
                             latestLaunch.write(versionLoaded)
-                        break
-                except:
-                    with open(worldSave + '\latestLaunch.txt', 'w') as latestLaunch:
-                        latestLaunch.write(versionLoaded)
-                x+=1
-            print(worldSave)
+                    x+=1
+                print(worldSave)
         
         if not os.path.exists('launcher\screenshots'):
             os.makedirs('launcher\screenshots')
@@ -359,6 +367,7 @@ def checkForFileUpdates():
 def profileMenu():
     global bigSlome, inputNumber, rgbTestValue, inputUsername, sliderSelected, sliding, inputSelected, usernameTestValue, profileDictionary, currentProfile
     bigSlome = False
+    helpMenu = False
 
     syncValues()
 
@@ -379,6 +388,31 @@ def profileMenu():
         screen.blit((smallTextFont.render('Use Launcher Saves', True, (255,255,255))), (855, 42))
         screen.blit(folderIcon, (1060,44))
 
+        if helpMenu:
+            overlay = pygame.Surface((1000, 500), pygame.SRCALPHA)
+            overlay.fill((0,0,0,230))
+            screen.blit(overlay, (100, 100))
+            screen.blit((textFont.render('Welcome to the Launcher Profile Menu!', True, (255,255,255))), (105,105))
+            helpMenuText = [
+                'Profile Menu:',
+                '   On the left side, you\'ll find a Profile system similar to modern Slome. This allows you to save and',
+                '   edit profiles that are compatible with Slome a0.4+! Use the arrows to navigate between up to 10',
+                '   different profiles, and use the RGB sliders and the input boxes to customise your Slome Profile.',
+                'Launcher Based Saving:',
+                '   On the right side you have the option to enable Launcher Based Saving. In old versions and',
+                '   April Fools versions, saves are stored under a different file path. If Launcher Based Saving is ',
+                '   enabled, it will move all of your Slome saves into 1 folder located in the Launcher. Please note ',
+                '   this is an intensive process especially if you have many Slome worlds. Please be patient and',
+                '   report any crashes that occur. The launcher will automatically backup worlds when you enable',
+                '   Launcher Based Saving, however it is still recommended you make your own backups if you wish',
+                '   to use Laucher Based Saving. *Any worlds that have the same name will be DELETED and loading',
+                '   older Slome saves in newer versions can cause CORRUPTION! Please use with caution*'
+                ]
+            x = 0
+            while x < 13:
+                screen.blit((smallTextFont.render(helpMenuText[x], True, (255,255,255))), (105, 140 + x * 20,))
+                x+=1
+
         mousePosition = pygame.mouse.get_pos() 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -390,6 +424,7 @@ def profileMenu():
                     inputNumber = False
                     rgbTestValue = 0
                     inputUsername = False
+                    helpMenu = False
                     if 40 <= mousePosition[0] <= 295 and 300 <= mousePosition[1] <= 700:
                         x=0
                         while x < 3:
@@ -429,6 +464,8 @@ def profileMenu():
                             swapBetweenLauncherSaving(profileDictionary['useLauncherSaves'])
                         elif 1060 <= mousePosition[0] <= 1076 and 44 <= mousePosition[1] <= 60:
                             os.startfile('launcher')
+                        elif 1165 <= mousePosition[0] <= 1185 and 16 <= mousePosition[1] <= 36:
+                            helpMenu = not helpMenu
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 sliding = False
@@ -520,14 +557,13 @@ while running:
                 rgbTestValue = 0
                 inputUsername = False
                 if mousePosition[0] > 400:
-
                     x = 0
                     while x < len(versionList):
                         if 550 <= mousePosition[0] <= 1050 and versions[x][3] <= mousePosition[1] <= versions[x][3] + 50:
                             weirdNameCases = [versions[x][1], f'versions\\{versionList[x]}\\survival project.exe', f'versions\\{versionList[x]}\\SlomeSlomeSlomeSlome.exe']
                             for filePath in weirdNameCases:
                                 try:
-                                    os.startfile(filePath)
+                                    os.startfile(filePath, arguments='')
                                     if profileDictionary['closeLauncher'] == True:
                                         time.sleep(2)
                                         running = False
@@ -557,10 +593,11 @@ while running:
                 bigSlome = False
 
         elif event.type == pygame.MOUSEWHEEL:
-            if (scroll >= 0 and event.y > 0) or (versions[-1][3] <= 660 and event.y < 0):
-                pass
-            else:
-                scroll += event.y * 15
+            if len(versions) > 0:
+                if (scroll >= 0 and event.y > 0) or (versions[-1][3] <= 660 and event.y < 0):
+                    pass
+                else:
+                    scroll += event.y * 15
 
     versions = []
     checkForFileUpdates()
