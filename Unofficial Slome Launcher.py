@@ -534,7 +534,10 @@ while running:
     drawUsername()
     drawSlome()
 
-    scrollBarHeight = max(20, 700 * min(1, 700 / (len(versionList) * 60)))
+    if len(versionList) > 0:
+        scrollBarHeight = max(20, 700 * min(1, 700 / (len(versionList) * 60)))
+    else:
+        scrollBarHeight = 700
     scrollBarPosition = 10 + (700 - scrollBarHeight) * (-scroll / max(1, len(versionList) * 60 - 700))
     pygame.draw.rect(screen, (255, 255, 255), (1170, scrollBarPosition, 20, scrollBarHeight))
     behindScrollBar = pygame.Surface((20, 700), pygame.SRCALPHA)
