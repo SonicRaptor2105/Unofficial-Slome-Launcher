@@ -524,6 +524,7 @@ def profileMenu():
         pygame.display.update()
 
 syncValues()
+scrolling = False
 running = True
 while running:
     screen.fill('white')
@@ -533,7 +534,12 @@ while running:
     drawUsername()
     drawSlome()
 
-    screen.blit((smallTextFont.render(launcherVersion, True, (255,255,255))), (14, 690))
+    scrollBarHeight = max(20, 700 * min(1, 700 / (len(versionList) * 60)))
+    scrollBarPosition = 10 + (700 - scrollBarHeight) * (-scroll / max(1, len(versionList) * 60 - 700))
+    pygame.draw.rect(screen, (255, 255, 255), (1170, scrollBarPosition, 20, scrollBarHeight))
+    behindScrollBar = pygame.Surface((20, 700), pygame.SRCALPHA)
+    behindScrollBar.fill((255,255,255,120))
+    screen.blit(behindScrollBar, (1170, 10))
 
     if profileDictionary['closeLauncher'] == True:
         pygame.draw.lines(screen, [255,255,255], True, [(20,420), (40,420), (40,400), (20,400)])
@@ -582,6 +588,8 @@ while running:
                             else:
                                 error('No Slome.exe file found at path')
                         x+=1
+                    if 1170 <= mousePosition[0] <= 1190 and 10 <= mousePosition[1] <= 710:
+                        scrolling = True
                 elif 20 <= mousePosition[0] <= 40 and 400 <= mousePosition[1] <= 420:
                     profileDictionary['closeLauncher'] = not profileDictionary['closeLauncher']
                     saveProfiles()
@@ -589,10 +597,17 @@ while running:
                     profileMenu()
                 
         elif event.type == pygame.MOUSEMOTION:
+            bigSlome = False
             if 72 <= mousePosition[0] <= 322 and 80 <= mousePosition[1] <= 330:
                 bigSlome = True
-            else:
-                bigSlome = False
+            elif scrolling == True:
+                scroll_range = len(versionList) * 60 - 700
+                if scroll_range > 0:
+                    scroll = -int((mousePosition[1] - (10 + scrollBarHeight/2)) / (700 - scrollBarHeight) * scroll_range)
+                    scroll = max(-scroll_range, min(0, scroll))
+        
+        elif event.type == pygame.MOUSEBUTTONUP:
+            scrolling = False
 
         elif event.type == pygame.MOUSEWHEEL:
             if len(versions) > 0:
