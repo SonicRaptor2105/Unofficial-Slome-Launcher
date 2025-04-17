@@ -12,7 +12,7 @@ import base64
 import datetime
 
 pygame.init()
-launcherVersion = 'a0.2.0'
+launcherVersion = 'a0.2.1'
 
 try:
     with open('launcher\data.dat') as images:
@@ -37,7 +37,7 @@ except:
     pygame.display.update()
     time.sleep(4)
     pygame.quit()
-    exit()
+    os._exit()
 
 if not os.path.exists('versions'):
     os.makedirs('versions')
@@ -332,6 +332,8 @@ def checkForFileUpdates():
                     worldSave = log[x].replace('Level loaded from: ', '').replace('\n','')
                 elif 'Level saved as' in log[x]:
                     worldSave = log[x].replace('Level saved as ', '').replace('/level.dat', '').replace('\n','')
+                    worldSave = re.sub(r'/[^/]*\.dat$', '', worldSave)
+                    print(worldSave)
                 x+=1
 
         if worldSave != '':
@@ -417,7 +419,7 @@ def profileMenu():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                exit(0)
+                os._exit(0)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pygame.mouse.get_pressed()[0] == True:
