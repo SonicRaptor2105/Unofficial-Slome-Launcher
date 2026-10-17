@@ -6,17 +6,22 @@ import datetime
 import threading
 import time
 import queue
+import psutil
+from aditionalDataClasses import *
 
 VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
-
 
 class Launcher(tkinter.Tk):
     def __init__(self):
         super().__init__()
         self.title("Unofficial Slome Launcher")
         self.geometry("800x550")
-
         self.instances = self.checkForInstances()
+        self.running = PersistentProccessArrayList()
+
+        self.running.validateAll()
+        for process in self.running.data: #Restore the monitor after the launcher is restarted if the process still exists
+            threading.Thread(target=self.monitorInstance, args=(process.pid,), daemon=True).start()
         self.drawIntstances()
 
     def drawIntstances(self):
@@ -49,8 +54,12 @@ class Launcher(tkinter.Tk):
             "-logFile", str(logPath),
             "-logflush"
         ]
-        instance = subprocess.Popen([slomePathEXE] + args)
-        self.logGUI(logPath)
+        instance = subprocess.Popen([slomePathEXE] + args) #Runs the instance with the above args and detaches it from the python process
+        pid = instance.pid
+        self.running.append(AdvProcessID(pid=pid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
+        threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start()
+        if showLog:
+            self.logGUI(logPath)
 
     def logGUI(self, logPath):
         logWindow = tkinter.Toplevel(self) #Spawn sub window
@@ -102,6 +111,10 @@ class Launcher(tkinter.Tk):
         logWindow.protocol("WM_DELETE_WINDOW", onClose) #Close the thread upon the window closing
         listener = threading.Thread(target=readLog, args=(logPath,), daemon=True)
         listener.start()
+
+    def monitorInstance(self, pid):
+        psutil.Process(pid).wait()
+        self.running.remove(pid)
 
 
 
