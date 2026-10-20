@@ -6,6 +6,7 @@ from dataclasses import dataclass, asdict
 @dataclass
 class AdvProcessID:
     pid: int
+    vid: str
     creation: int
     logPath: str
 
@@ -46,3 +47,16 @@ class PersistentProccessArrayList:
                     self.remove(process.pid)
             except:
                 self.remove(process.pid)
+
+    def find(self, pid=None, vid=None):
+        if vid == None and pid == None:
+            return
+        elif pid:
+            for instance in self.data:
+                if instance.pid == pid:
+                    break
+        elif vid:
+            for instance in self.data:
+                if instance.pid == pid:
+                    break
+        return instance

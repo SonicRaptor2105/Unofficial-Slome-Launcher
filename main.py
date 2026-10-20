@@ -7,6 +7,9 @@ import threading
 import time
 import queue
 import psutil
+import hashlib
+import icoextract
+import PIL
 from aditionalDataClasses import *
 
 VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
@@ -16,9 +19,27 @@ class Launcher(tkinter.Tk):
         super().__init__()
         self.title("Unofficial Slome Launcher")
         self.geometry("800x550")
+
+        self.thumbnails = list()
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=2)
+
+        frame = tkinter.Frame(self, relief="solid", bd=2)
+        frame.grid(row=0, column=1, rowspan=2, sticky="nsew")
+        canvas = tkinter.Canvas(frame, highlightthickness=0)
+        scrollbar = tkinter.Scrollbar(frame, orient="vertical", command=canvas.yview)
+        self.instanceFrame = tkinter.Frame(canvas)
+        self.instanceFrame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=self.instanceFrame, anchor="nw", tags="inner_window")
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig("inner_window", width=e.width))
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
         self.instances = self.checkForInstances()
         self.running = PersistentProccessArrayList()
-
         self.running.validateAll()
         for process in self.running.data: #Restore the monitor after the launcher is restarted if the process still exists
             threading.Thread(target=self.monitorInstance, args=(process.pid,), daemon=True).start()
@@ -26,8 +47,41 @@ class Launcher(tkinter.Tk):
 
     def drawIntstances(self):
         for instance in self.instances:
-            x = tkinter.Button(self, text=instance.stem, command=lambda p=instance: self.launchVersion(p, showLog=True))
-            x.pack()
+            vid = hashlib.md5(bytes(str(instance.name), encoding="utf-8")).hexdigest()
+            rowFrame = tkinter.Frame(self.instanceFrame, name=vid, relief="raised")
+            rowFrame.pack(fill="x", padx=5, pady=3)
+            rowFrame.pack_propagate(False)
+            rowFrame.config(height=36)
+            newInstanceButton = tkinter.Button(
+                rowFrame,
+                text=instance.stem,
+                #image=self.btn_icon,
+                compound="left",
+                anchor="w",
+                relief="flat",
+                padx=10,
+                command=lambda p=instance, v=vid: self.launchVersion(filePath=p, vid=v, showLog=True) #Add the buttons and bind their local vars to prevent overwritting
+            )
+            newInstanceButton.place(relx=0, rely=0, relwidth=1.0, relheight=1.0)
+
+            tkinter.Button( #Add a close button for when the instance is running
+                rowFrame,
+                name="closeButton",
+                text="X",
+                relief="flat",
+                bg="#ff4d4d",
+                command=lambda v=vid: psutil.Process(self.running.find(vid=v).pid).kill() #Close the version instantly
+            )
+            tkinter.Button( #Add a log button for when the instance is running
+                rowFrame,
+                name="logButton",
+                text="L",
+                relief="flat",
+                bg="#02FF0F",
+                command=lambda v=vid: self.logGUI(pathlib.Path(self.running.find(vid=v).logPath)) #Open a new log instance
+            )
+
+
 
     def checkForInstances(self):
         fp = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "instances"
@@ -46,7 +100,7 @@ class Launcher(tkinter.Tk):
             fileList.remove(file)
         return fileList #Returns all zips or folders with slome executables in them
 
-    def launchVersion(self, filePath: pathlib.Path, showLog: bool = False): #Launches the selected version
+    def launchVersion(self, filePath: pathlib.Path, vid: str, showLog: bool = False): #Launches the selected version
         slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
         logPath = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.log")
         logPath.parent.mkdir(parents=True, exist_ok=True)
@@ -55,13 +109,17 @@ class Launcher(tkinter.Tk):
             "-logflush"
         ]
         instance = subprocess.Popen([slomePathEXE] + args) #Runs the instance with the above args and detaches it from the python process
+        
         pid = instance.pid
-        self.running.append(AdvProcessID(pid=pid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
-        threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start()
+        self.running.append(AdvProcessID(pid=pid, vid=vid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
+        threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start() #Starts a thread to watch for the end of the process to remove it from the active processes list
+
+        self.showSubButtons(vid)
+
         if showLog:
             self.logGUI(logPath)
-
-    def logGUI(self, logPath):
+            
+    def logGUI(self, logPath: pathlib.Path):
         logWindow = tkinter.Toplevel(self) #Spawn sub window
         logWindow.title(f"Slome log")
         logWindow.geometry("320x600")
@@ -112,9 +170,27 @@ class Launcher(tkinter.Tk):
         listener = threading.Thread(target=readLog, args=(logPath,), daemon=True)
         listener.start()
 
-    def monitorInstance(self, pid):
+    def monitorInstance(self, pid): #Removes any running instances instantly to avoid having to clean up later
         psutil.Process(pid).wait()
+        self.hideSubButtons(self.running.find(pid=pid).vid)
         self.running.remove(pid)
+
+    def showSubButtons(self, vid):
+        for child in self.instanceFrame.winfo_children(): #Search the instance pannel for the specific instance
+            if child.winfo_name() == vid:
+                for subChild in child.winfo_children():
+                    if subChild.winfo_name() == "logButton": #Show the log button
+                        subChild.place(relx=1.0, x=-26, y=4, anchor="ne", width=18, height=18)
+                    elif subChild.winfo_name() == "closeButton": #Show the close button
+                        subChild.place(relx=1.0, x=-4, y=4, anchor="ne", width=18, height=18)
+
+    def hideSubButtons(self, vid): #Hide the close and log button
+        for child in self.instanceFrame.winfo_children(): #Search the instance pannel for the specific instance
+            if child.winfo_name() == vid:
+                for subChild in child.winfo_children():
+                    if subChild.winfo_name() == "logButton" or subChild.winfo_name() == "closeButton":
+                        subChild.place_forget()
+
 
 
 
