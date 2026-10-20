@@ -10,6 +10,7 @@ import psutil
 import hashlib
 import icoextract
 import PIL
+import ctypes
 from aditionalDataClasses import *
 
 VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
@@ -41,9 +42,10 @@ class Launcher(tkinter.Tk):
         self.instances = self.checkForInstances()
         self.running = PersistentProccessArrayList()
         self.running.validateAll()
+        self.drawIntstances()
         for process in self.running.data: #Restore the monitor after the launcher is restarted if the process still exists
             threading.Thread(target=self.monitorInstance, args=(process.pid,), daemon=True).start()
-        self.drawIntstances()
+            self.showSubButtons(process.vid)
 
     def drawIntstances(self):
         for instance in self.instances:
@@ -101,23 +103,37 @@ class Launcher(tkinter.Tk):
         return fileList #Returns all zips or folders with slome executables in them
 
     def launchVersion(self, filePath: pathlib.Path, vid: str, showLog: bool = False): #Launches the selected version
-        slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
-        logPath = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.log")
-        logPath.parent.mkdir(parents=True, exist_ok=True)
-        args = [
-            "-logFile", str(logPath),
-            "-logflush"
-        ]
-        instance = subprocess.Popen([slomePathEXE] + args) #Runs the instance with the above args and detaches it from the python process
-        
-        pid = instance.pid
-        self.running.append(AdvProcessID(pid=pid, vid=vid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
-        threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start() #Starts a thread to watch for the end of the process to remove it from the active processes list
+        running = self.running.find(vid=vid)
+        if running: #If the versions running already
+            def _searchForProcess(hwnd, extra): #Searches for the process and fullscreens it
+                if ctypes.windll.user32.IsWindowVisible(hwnd): #Scan only visible processes not background tasks
+                    targetPid = ctypes.c_ulong()
+                    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(targetPid)) #Get the process id of the currently selected task
+                    if targetPid.value == running.pid: #If its the instance
+                        ctypes.windll.user32.ShowWindow(hwnd, 9) #Restores the program
+                        ctypes.windll.user32.SetForegroundWindow(hwnd) #Brings the process into the foreground
+                        return False  #Stop searching
+                return True
+            ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)(_searchForProcess), 0) #Start the search for the instance using ctypes
 
-        self.showSubButtons(vid)
+        else: #If its not running
+            slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
+            logPath = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.log")
+            logPath.parent.mkdir(parents=True, exist_ok=True)
+            args = [
+                "-logFile", str(logPath),
+                "-logflush"
+            ]
+            instance = subprocess.Popen([slomePathEXE] + args) #Runs the instance with the above args and detaches it from the python process
+            
+            pid = instance.pid
+            self.running.append(AdvProcessID(pid=pid, vid=vid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
+            threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start() #Starts a thread to watch for the end of the process to remove it from the active processes list
 
-        if showLog:
-            self.logGUI(logPath)
+            self.showSubButtons(vid)
+
+            if showLog:
+                self.logGUI(logPath)
             
     def logGUI(self, logPath: pathlib.Path):
         logWindow = tkinter.Toplevel(self) #Spawn sub window
