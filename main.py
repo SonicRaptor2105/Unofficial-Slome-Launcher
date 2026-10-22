@@ -9,8 +9,8 @@ import queue
 import psutil
 import hashlib
 import icoextract
-import PIL
 import ctypes
+from PIL import Image, ImageTk
 from aditionalDataClasses import *
 
 VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
@@ -20,6 +20,7 @@ class Launcher(tkinter.Tk):
         super().__init__()
         self.title("Unofficial Slome Launcher")
         self.geometry("800x550")
+        self.iconbitmap("slomeIcon.ico") #TEMP
 
         self.thumbnails = list()
         self.rowconfigure(0, weight=1)
@@ -53,11 +54,20 @@ class Launcher(tkinter.Tk):
             rowFrame = tkinter.Frame(self.instanceFrame, name=vid, relief="raised")
             rowFrame.pack(fill="x", padx=5, pady=3)
             rowFrame.pack_propagate(False)
-            rowFrame.config(height=36)
+            rowFrame.config(height=60)
+            
+            if instance.is_dir(): #Only scrape .icos from unzipped instances
+                slomePathEXE = instance / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (instance / file).is_file())) #Grab the version
+                extractor = icoextract.IconExtractor(slomePathEXE)
+                data = extractor.get_icon(num=0)
+                rawIcon = Image.open(data).resize((48,48))
+            else:
+                rawIcon = Image.open("slomeIcon.ico").resize((48,48)) #Just grab the built in icon as a fallback NEEDS TO BE REBOUND TO LOCAL BEFORE COMPILING TO EXE!!!!!
+            icon = ImageTk.PhotoImage(rawIcon) #Tkinter accepts PIL files but not bytecode
             newInstanceButton = tkinter.Button(
                 rowFrame,
-                text=instance.stem,
-                #image=self.btn_icon,
+                text=instance.name if instance.is_dir() else instance.stem, #Test to avoid cutting off folder names if they have a .
+                image=icon,
                 compound="left",
                 anchor="w",
                 relief="flat",
@@ -65,6 +75,7 @@ class Launcher(tkinter.Tk):
                 command=lambda p=instance, v=vid: self.launchVersion(filePath=p, vid=v, showLog=True) #Add the buttons and bind their local vars to prevent overwritting
             )
             newInstanceButton.place(relx=0, rely=0, relwidth=1.0, relheight=1.0)
+            newInstanceButton.image = icon #Prevent the icon from getting killed by the gc
 
             tkinter.Button( #Add a close button for when the instance is running
                 rowFrame,
@@ -118,7 +129,7 @@ class Launcher(tkinter.Tk):
 
         else: #If its not running
             slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
-            logPath = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.log")
+            logPath = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.log")
             logPath.parent.mkdir(parents=True, exist_ok=True)
             args = [
                 "-logFile", str(logPath),
@@ -129,7 +140,7 @@ class Launcher(tkinter.Tk):
             pid = instance.pid
             self.running.append(AdvProcessID(pid=pid, vid=vid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
             threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start() #Starts a thread to watch for the end of the process to remove it from the active processes list
-
+            
             self.showSubButtons(vid)
 
             if showLog:
