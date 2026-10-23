@@ -11,7 +11,7 @@ import hashlib
 import icoextract
 import ctypes
 import logging
-from main import handleException
+from logHandler import handleException
 from PIL import Image, ImageTk
 VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
 from aditionalDataClasses import *
