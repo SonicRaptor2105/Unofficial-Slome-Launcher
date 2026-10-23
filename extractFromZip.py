@@ -2,7 +2,7 @@ import zipfile
 import pathlib
 import json
 import shutil
-from main import VALIDSLOMEVERSIONS
+from launcher import VALIDSLOMEVERSIONS
 
 CACHEPATH = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "temp" / "cache" / "latestLaunch"
 
