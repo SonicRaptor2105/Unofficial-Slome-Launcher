@@ -48,16 +48,13 @@ class PersistentProccessArrayList:
             except:
                 self.remove(process.pid)
 
-    def find(self, pid=None, vid=None):
-        instance = None
-        if vid == None and pid == None:
-            return instance
-        elif pid:
-            for instance in self.data:
-                if instance.pid == pid:
-                    break
-        elif vid:
-            for instance in self.data:
-                if instance.pid == pid:
-                    break
-        return instance
+    def find(self, pid=None, vid=None): #Find a running instance by either its pid or vid
+        if pid is not None:
+            for process in self.data:
+                if process.pid == pid:
+                    return process
+        elif vid is not None:
+            for process in self.data:
+                if process.vid == vid:
+                    return process
+        return None

@@ -12,6 +12,7 @@ import icoextract
 import ctypes
 from PIL import Image, ImageTk
 from aditionalDataClasses import *
+from extractFromZip import *
 
 VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
 
@@ -94,8 +95,6 @@ class Launcher(tkinter.Tk):
                 command=lambda v=vid: self.logGUI(pathlib.Path(self.running.find(vid=v).logPath)) #Open a new log instance
             )
 
-
-
     def checkForInstances(self):
         fp = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "instances"
         if not fp.exists():
@@ -128,9 +127,15 @@ class Launcher(tkinter.Tk):
             ctypes.windll.user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)(_searchForProcess), 0) #Start the search for the instance using ctypes
 
         else: #If its not running
-            slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
+            if filePath.is_dir():
+                slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
+            else:
+                slomePathEXE = unzipFile(filePath) #Unzip the game first then run it
+            
             logPath = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.log")
             logPath.parent.mkdir(parents=True, exist_ok=True)
+            with open(logPath, "w") as log:
+                log.write("Warning this version has been launched through SonicRaptor's launcher.\nThis may potentially lead to crashes.\n\n\n")
             args = [
                 "-logFile", str(logPath),
                 "-logflush"
@@ -171,6 +176,8 @@ class Launcher(tkinter.Tk):
             with open(logPath, "r", encoding="utf-8", errors="ignore") as f:
                 while not stopEvent.is_set():
                     line = f.readline()
+                    if "\x00" in line: #Version has been closed
+                        stopEvent.set()
                     if not line:
                         time.sleep(0.1)
                         continue
@@ -198,7 +205,9 @@ class Launcher(tkinter.Tk):
         listener.start()
 
     def monitorInstance(self, pid): #Removes any running instances instantly to avoid having to clean up later
-        psutil.Process(pid).wait()
+        exitCode = psutil.Process(pid).wait()
+        with open(pathlib.Path(self.running.find(pid=pid).logPath), "a") as f: #Log the exit code incase its force closed
+            f.write(f"Process closed with code {exitCode}\x00")
         self.hideSubButtons(self.running.find(pid=pid).vid)
         self.running.remove(pid)
 
