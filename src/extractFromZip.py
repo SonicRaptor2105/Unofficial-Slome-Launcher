@@ -2,11 +2,11 @@ import zipfile
 import pathlib
 import json
 import shutil
-from launcher import VALIDSLOMEVERSIONS
+from src.constants import VALIDSLOMEVERSIONS
 
 CACHEPATH = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "temp" / "cache" / "latestLaunch"
 
-def getArchiveRoot(fileNames):
+def _getArchiveRoot(fileNames):
     filePaths = [pathlib.PurePosixPath(name) for name in fileNames if not name.endswith("/")]
     if not filePaths or any(len(path.parts) < 2 for path in filePaths):
         return None
@@ -16,7 +16,7 @@ def getArchiveRoot(fileNames):
         return root
     return None
 
-def compareHashDict(crc: dict, version: str): #Returns that need to be extracted
+def _compareHashDict(crc: dict, version: str): #Returns that need to be extracted
     hashDictPath = CACHEPATH / version / "hashDict.json"
     if not hashDictPath.exists(): #Nothings extracted or cache corrupted
         return crc
@@ -27,7 +27,7 @@ def compareHashDict(crc: dict, version: str): #Returns that need to be extracted
 def getHashDict(zipPath: pathlib.Path):
     hashDict = dict()
     with zipfile.ZipFile(zipPath, "r") as zf:
-        archiveRoot = getArchiveRoot(zf.namelist())
+        archiveRoot = _getArchiveRoot(zf.namelist())
         for info in zf.infolist():
             if info.filename.endswith("/"): #Skip folders
                 continue
@@ -38,7 +38,7 @@ def getHashDict(zipPath: pathlib.Path):
             hashDict[f"{info.CRC:08x}"] = filePath #Saves the CRC and the filePath
     return hashDict
 
-def dumpHashDict(hashDict: dict, version):
+def _dumpHashDict(hashDict: dict, version):
     CACHEPATH.mkdir(parents=True, exist_ok=True)
     with open(CACHEPATH / version / "hashDict.json", "w") as f:
         json.dump(hashDict, f)
@@ -46,9 +46,9 @@ def dumpHashDict(hashDict: dict, version):
 def unzipFile(zipPath: pathlib.Path):
     with zipfile.ZipFile(zipPath, "r") as zf:
         version = next(version for version in VALIDSLOMEVERSIONS if any(version in name for name in zf.namelist()))[:-4] #Check the version name
-        archiveRoot = getArchiveRoot(zf.namelist())
+        archiveRoot = _getArchiveRoot(zf.namelist())
     hashDict = getHashDict(zipPath=zipPath) #Get the CRC of each file with its filePath
-    dif = compareHashDict(hashDict, version)
+    dif = _compareHashDict(hashDict, version)
     if dif == {}:
         return CACHEPATH / version / f"{version}.exe" #Return the file path so it doesn't have to be constructed later
     pathlib.Path(CACHEPATH / version / "hashDict.json").unlink(missing_ok=True) #Delete the file to show that the extract has started
@@ -69,5 +69,5 @@ def unzipFile(zipPath: pathlib.Path):
                 filesToExtract.remove(filePath)
             if not filesToExtract: #If nothing else is needed
                 break
-    dumpHashDict(hashDict, version) #Dump the hashDict only once the extract has been fully completed
+    _dumpHashDict(hashDict, version) #Dump the hashDict only once the extract has been fully completed
     return CACHEPATH / version / f"{version}.exe"

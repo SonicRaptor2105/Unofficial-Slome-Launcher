@@ -1,8 +1,7 @@
 import argparse
 import logging
 import sys
-from logHandler import *
-from launcher import *
+from src import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--verbose", action="store_true", help="Turn on verbose logging")

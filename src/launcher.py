@@ -11,11 +11,11 @@ import hashlib
 import icoextract
 import ctypes
 import logging
-from logHandler import handleException
+from src.logHandler import handleException
 from PIL import Image, ImageTk
-VALIDSLOMEVERSIONS = ["Slome.exe", "survival project.exe", "SlomeSlomeSlomeSlome.exe"]
-from aditionalDataClasses import *
-from extractFromZip import *
+from src.aditionalDataClasses import *
+from src.extractFromZip import unzipFile
+from src.constants import VALIDSLOMEVERSIONS
 
 LOGGER = logging.getLogger("Slome Launcher")
 
@@ -24,7 +24,7 @@ class Launcher(tkinter.Tk):
         super().__init__()
         self.title("Unofficial Slome Launcher")
         self.geometry("800x550")
-        self.iconbitmap("slomeIcon.ico") #TEMP
+        self.iconbitmap(r"assets\slomeIcon.ico") #TEMP
 
         self.thumbnails = list()
         self.rowconfigure(0, weight=1)
@@ -70,7 +70,7 @@ class Launcher(tkinter.Tk):
                 data = extractor.get_icon(num=0)
                 rawIcon = Image.open(data).resize((48,48))
             else:
-                rawIcon = Image.open("slomeIcon.ico").resize((48,48)) #Just grab the built in icon as a fallback NEEDS TO BE REBOUND TO LOCAL BEFORE COMPILING TO EXE!!!!!
+                rawIcon = Image.open(r"assets\slomeIcon.ico").resize((48,48)) #Just grab the built in icon as a fallback NEEDS TO BE REBOUND TO LOCAL BEFORE COMPILING TO EXE!!!!!
             icon = ImageTk.PhotoImage(rawIcon) #Tkinter accepts PIL files but not bytecode
             newInstanceButton = tkinter.Button(
                 rowFrame,

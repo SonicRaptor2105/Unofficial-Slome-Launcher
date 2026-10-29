@@ -12,7 +12,7 @@ class AdvProcessID:
 
 class PersistentProccessArrayList:
     def __init__(self):
-        self.filePath = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "temp" / "cache" / "processes.jsonl"
+        self.filePath = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "temp" / "cache" / "processes.jsonl"
         self.data = list()
         self.load()
 
