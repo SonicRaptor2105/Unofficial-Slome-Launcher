@@ -1,7 +1,7 @@
-import pathlib
 import json
 import psutil
 from dataclasses import dataclass, asdict
+from src.constants import HOME
 
 @dataclass
 class AdvProcessID:
@@ -12,7 +12,7 @@ class AdvProcessID:
 
 class PersistentProccessArrayList:
     def __init__(self):
-        self.filePath = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "temp" / "cache" / "processes.jsonl"
+        self.filePath = HOME / "temp" / "cache" / "processes.jsonl"
         self.data = list()
         self.load()
 

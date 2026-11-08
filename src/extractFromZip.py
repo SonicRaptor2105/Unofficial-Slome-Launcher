@@ -2,9 +2,9 @@ import zipfile
 import pathlib
 import json
 import shutil
-from src.constants import VALIDSLOMEVERSIONS
+from src.constants import VALIDSLOMEVERSIONS, HOME
 
-CACHEPATH = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "temp" / "cache" / "latestLaunch"
+CACHEPATH = HOME / "temp" / "cache" / "latestLaunch"
 
 def _getArchiveRoot(fileNames):
     filePaths = [pathlib.PurePosixPath(name) for name in fileNames if not name.endswith("/")]

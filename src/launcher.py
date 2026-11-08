@@ -11,11 +11,13 @@ import hashlib
 import icoextract
 import ctypes
 import logging
+import os
 from src.logHandler import handleException
 from PIL import Image, ImageTk
 from src.aditionalDataClasses import *
 from src.extractFromZip import unzipFile
-from src.constants import VALIDSLOMEVERSIONS
+from src.modInjector import install
+from src.constants import VALIDSLOMEVERSIONS, HOME
 
 LOGGER = logging.getLogger("Slome Launcher")
 
@@ -44,7 +46,7 @@ class Launcher(tkinter.Tk):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        self.instances = self.checkForInstances()
+        self.versions = self.checkForVersions()
         self.running = PersistentProccessArrayList()
         self.running.validateAll()
         self.drawIntstances()
@@ -57,14 +59,14 @@ class Launcher(tkinter.Tk):
         handleException(excType, excValue, excTraceback)
 
     def drawIntstances(self):
-        for instance in self.instances:
+        for instance in self.versions:
             vid = hashlib.md5(bytes(str(instance.name), encoding="utf-8")).hexdigest()
             rowFrame = tkinter.Frame(self.instanceFrame, name=vid, relief="raised")
             rowFrame.pack(fill="x", padx=5, pady=3)
             rowFrame.pack_propagate(False)
             rowFrame.config(height=60)
             
-            if instance.is_dir(): #Only scrape .icos from unzipped instances
+            if instance.is_dir(): #Only scrape .icos from unzipped versions
                 slomePathEXE = instance / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (instance / file).is_file())) #Grab the version
                 extractor = icoextract.IconExtractor(slomePathEXE)
                 data = extractor.get_icon(num=0)
@@ -102,11 +104,11 @@ class Launcher(tkinter.Tk):
                 command=lambda v=vid: self.logGUI(pathlib.Path(self.running.find(vid=v).logPath)) #Open a new log instance
             )
 
-    def checkForInstances(self):
-        fp = pathlib.Path.home() / "AppData/Roaming" / ".Unofficial Slome Launcher" / "instances"
+    def checkForVersions(self):
+        fp = HOME / "versions"
         if not fp.exists():
-            fp.mkdir(parents=True) #First launch or instances folder missing
-            return list() #No instances installed as folder was just created
+            fp.mkdir(parents=True) #First launch or versions folder missing
+            return list() #No versions installed as folder was just created
         fileList = list(fp.iterdir())
         for file in fileList[:]: #Loop through the list and find any valid versions
             if file.is_dir():
@@ -141,15 +143,26 @@ class Launcher(tkinter.Tk):
             else:
                 slomePathEXE = unzipFile(filePath) #Unzip the game first then run it
 
-            logPath = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "logs" / filePath.name / datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S.log")
+            logPath = HOME / "instances" / filePath.name / datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S.log")
             logPath.parent.mkdir(parents=True, exist_ok=True)
-            with open(logPath, "w") as log:
-                log.write("Warning this version has been launched through SonicRaptor's launcher.\nThis may potentially lead to crashes.\n\n\n")
             args = [
                 "-logFile", str(logPath),
                 "-logflush"
             ]
-            instance = subprocess.Popen([slomePathEXE] + args) #Runs the instance with the above args and detaches it from the python process
+            dataDir = HOME / "instances" / filePath.name
+            dataDir.mkdir(parents=True, exist_ok=True)
+            env = os.environ.copy()
+
+            try:
+                install(slomePathEXE) #Install the PersistentPathPatch
+                env["DOORSTOP_ENABLED"] = "1" #Activate the patch
+                env["DOORSTOP_TARGET_ASSEMBLY"] = str(pathlib.Path("patcher") / "PersistentPathPatch.dll")
+                env["UNITY_DATA_OVERRIDE"] = str(dataDir)
+                LOGGER.debug(f"PersistentPathPatch injection successful for {filePath.name}")
+            except Exception as e:
+                LOGGER.error(f"Failed to inject PersistentPathPatch for {filePath.name}\n{e}\nLaunching normally.")
+
+            instance = subprocess.Popen([slomePathEXE] + args, env=env, cwd=filePath.parent) #Runs the instance with the above args and detaches it from the python process
             pid = instance.pid
             self.running.append(AdvProcessID(pid=pid, vid=vid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
             threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start() #Starts a thread to watch for the end of the process to remove it from the active processes list
@@ -210,7 +223,7 @@ class Launcher(tkinter.Tk):
         listener = threading.Thread(target=readLog, args=(logPath,), daemon=True)
         listener.start()
 
-    def monitorInstance(self, pid): #Removes any running instances instantly to avoid having to clean up later
+    def monitorInstance(self, pid): #Removes any running versions instantly to avoid having to clean up later
         exitCode = psutil.Process(pid).wait()
         with open(pathlib.Path(self.running.find(pid=pid).logPath), "a") as f: #Log the exit code incase its force closed
             f.write(f"Process closed with code {exitCode}\x00")

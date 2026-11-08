@@ -1,12 +1,12 @@
 import logging
-import pathlib
 import sys
 from types import TracebackType
 from typing import Type
+from src.constants import HOME
 
 LOGGER = logging.getLogger("Slome Launcher")
 LOGGER.setLevel(logging.ERROR)
-filePath = pathlib.Path.home() / "AppData" / "Roaming" / ".Unofficial Slome Launcher" / "crash.log"
+filePath = HOME / "crash.log"
 if filePath.exists():
     filePath.replace(filePath.parent / "crashOld.log")
 fileHandler = logging.FileHandler(filePath, mode="w", encoding="utf-8", delay=True)
