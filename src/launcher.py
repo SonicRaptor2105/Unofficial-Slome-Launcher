@@ -33,8 +33,14 @@ class Launcher(tkinter.Tk):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
+        #Versions box
         frame = tkinter.Frame(self, relief="solid", bd=2)
         frame.grid(row=0, column=1, rowspan=2, sticky="nsew")
+        statusBox = tkinter.Frame(frame, height=30, relief="solid", bd=2)
+        statusBox.pack(side="bottom", fill="x")
+        statusBox.pack_propagate(False)
+        self.statusLabel = tkinter.Label(statusBox, text="", fg="black")
+        self.statusLabel.pack(side="left", padx=8)
         canvas = tkinter.Canvas(frame, highlightthickness=0)
         scrollbar = tkinter.Scrollbar(frame, orient="vertical", command=canvas.yview)
         self.instanceFrame = tkinter.Frame(canvas)
@@ -46,8 +52,10 @@ class Launcher(tkinter.Tk):
         scrollbar.pack(side="right", fill="y")
 
         self.versions = self.checkForVersions()
+        self.statusLabel.config(text=f"Ready | {len(self.versions)} versions found")
         self.running = PersistentProccessArrayList()
         self.running.validateAll()
+        self.loggers = dict()
         self.drawIntstances()
         for process in self.running.data: #Restore the monitor after the launcher is restarted if the process still exists
             LOGGER.debug(f"Resumed process with pid of {process.pid}")
@@ -140,8 +148,9 @@ class Launcher(tkinter.Tk):
             if filePath.is_dir():
                 slomePathEXE = filePath / pathlib.Path(next(file for file in VALIDSLOMEVERSIONS if (filePath / file).is_file())) #Gets whatever version of the game is in the instance
             else:
+                self.statusLabel.config(text=f"Extracting {filePath.name}...")
                 slomePathEXE = unzipFile(filePath) #Unzip the game first then run it
-
+            self.statusLabel.config(text=f"Launching {filePath.name}...")
             logPath = HOME / "instances" / filePath.name / datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S.log")
             logPath.parent.mkdir(parents=True, exist_ok=True)
             args = [
@@ -166,11 +175,17 @@ class Launcher(tkinter.Tk):
             self.running.append(AdvProcessID(pid=pid, vid=vid, creation=psutil.Process(pid).create_time(), logPath=str(logPath))) #Push tracking data
             threading.Thread(target=self.monitorInstance, args=(pid,), daemon=True).start() #Starts a thread to watch for the end of the process to remove it from the active processes list
             LOGGER.debug(f"Launched version {filePath.name} with pid {pid}")
+            self.statusLabel.config(text=f"Running {filePath.name}")
             self.showSubButtons(vid)
             if showLog:
                 self.logGUI(logPath)
 
     def logGUI(self, logPath: pathlib.Path):
+        existingLogger = self.loggers.get(logPath, None)
+        if existingLogger:
+            existingLogger.attributes('-topmost', True) #Pull to front
+            existingLogger.attributes('-topmost', False) #Allow other windows to cover it again
+            return
         logWindow = tkinter.Toplevel(self) #Spawn sub window
         logWindow.title(f"Slome log")
         logWindow.geometry("320x600")
@@ -182,6 +197,8 @@ class Launcher(tkinter.Tk):
         logBox.pack(expand=True, fill=tkinter.BOTH, padx=4, pady=0)
         logBox.config(state=tkinter.DISABLED) #Lock the logger
         scrollbar.config(command=logBox.yview)
+
+        self.loggers[logPath] = logWindow #Save to a dict so it can be restored if requested
 
         stopEvent = threading.Event() #Set a stop event for the sub thread so it can be rejoined on gui close
         logQueue = queue.Queue() #Queue log messages so they can be processed on the main thread
@@ -216,6 +233,7 @@ class Launcher(tkinter.Tk):
         def onClose():
             stopEvent.set()
             logWindow.destroy()
+            del self.loggers[logPath] #Remove from the dict
 
         logWindow.bind("<<NewLogLine>>", updateGUI) #Schedules a gui update for every new log found
         logWindow.protocol("WM_DELETE_WINDOW", onClose) #Close the thread upon the window closing
