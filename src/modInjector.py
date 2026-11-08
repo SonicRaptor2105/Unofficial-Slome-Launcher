@@ -1,6 +1,7 @@
 import struct
 import shutil
 import pathlib
+from src.resourceManager import getResourcePath
 
 def getBitness(exe: pathlib.Path):
     with open(exe, "rb") as f:
@@ -15,7 +16,7 @@ def getBitness(exe: pathlib.Path):
         raise ValueError(f"Unsupported exe architecture: {machine:#x}") #Error handling to prevent injecting the mod into invalid dirs
 
 def install(exe: pathlib.Path):
-    patcherDir = pathlib.Path(__file__).resolve().parent.parent / "patcher"
+    patcherDir = getResourcePath(pathlib.Path(__file__).resolve().parent.parent / "patcher")
     proxyDll = patcherDir / getBitness(exe) / "winhttp.dll"
     patcherDll = patcherDir / "PersistentPathPatch.dll"
     ini = f"""[General

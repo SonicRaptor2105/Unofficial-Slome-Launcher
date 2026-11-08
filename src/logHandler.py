@@ -13,7 +13,9 @@ fileHandler = logging.FileHandler(filePath, mode="w", encoding="utf-8", delay=Tr
 fileHandler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(message)s", datefmt="%d-%m-%Y %H:%M:%S",))
 consoleHandler = logging.StreamHandler(sys.stdout)
 LOGGER.addHandler(fileHandler)
-LOGGER.addHandler(consoleHandler)
+if sys.stdout is not None:
+    consoleHandler = logging.StreamHandler(sys.stdout)
+    LOGGER.addHandler(consoleHandler)
 LOGGER.propagate = False
 
 def handleException(excType: Type[BaseException], excValue: BaseException, excTraceback: TracebackType):

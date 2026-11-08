@@ -3,3 +3,4 @@ from src.constants import VALIDSLOMEVERSIONS
 from src.extractFromZip import unzipFile
 from src.launcher import Launcher
 from src.logHandler import handleException
+from src.resourceManager import getResourcePath

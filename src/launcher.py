@@ -12,12 +12,13 @@ import icoextract
 import ctypes
 import logging
 import os
-from src.logHandler import handleException
 from PIL import Image, ImageTk
+from src.logHandler import handleException
 from src.aditionalDataClasses import *
 from src.extractFromZip import unzipFile
 from src.modInjector import install
 from src.constants import VALIDSLOMEVERSIONS, HOME
+from src.resourceManager import getResourcePath
 
 LOGGER = logging.getLogger("Slome Launcher")
 
@@ -26,13 +27,11 @@ class Launcher(tkinter.Tk):
         super().__init__()
         self.title("Unofficial Slome Launcher")
         self.geometry("800x550")
-        self.iconbitmap(r"assets\slomeIcon.ico") #TEMP
-
-        self.thumbnails = list()
+        self.iconbitmap(bitmap=getResourcePath(r"assets\slomeIcon.ico"), default=getResourcePath(r"assets\slomeIcon.ico"))
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=2)
+        self.columnconfigure(1, weight=1)
 
         frame = tkinter.Frame(self, relief="solid", bd=2)
         frame.grid(row=0, column=1, rowspan=2, sticky="nsew")
@@ -72,7 +71,7 @@ class Launcher(tkinter.Tk):
                 data = extractor.get_icon(num=0)
                 rawIcon = Image.open(data).resize((48,48))
             else:
-                rawIcon = Image.open(r"assets\slomeIcon.ico").resize((48,48)) #Just grab the built in icon as a fallback NEEDS TO BE REBOUND TO LOCAL BEFORE COMPILING TO EXE!!!!!
+                rawIcon = Image.open(getResourcePath(r"assets\slomeIcon.ico")).resize((48,48)) #Just grab the built in icon as a fallback NEEDS TO BE REBOUND TO LOCAL BEFORE COMPILING TO EXE!!!!!
             icon = ImageTk.PhotoImage(rawIcon) #Tkinter accepts PIL files but not bytecode
             newInstanceButton = tkinter.Button(
                 rowFrame,
@@ -156,7 +155,7 @@ class Launcher(tkinter.Tk):
             try:
                 install(slomePathEXE) #Install the PersistentPathPatch
                 env["DOORSTOP_ENABLED"] = "1" #Activate the patch
-                env["DOORSTOP_TARGET_ASSEMBLY"] = str(pathlib.Path("patcher") / "PersistentPathPatch.dll")
+                env["DOORSTOP_TARGET_ASSEMBLY"] = str(getResourcePath(pathlib.Path("patcher") / "PersistentPathPatch.dll"))
                 env["UNITY_DATA_OVERRIDE"] = str(dataDir)
                 LOGGER.debug(f"PersistentPathPatch injection successful for {filePath.name}")
             except Exception as e:
@@ -170,7 +169,7 @@ class Launcher(tkinter.Tk):
             self.showSubButtons(vid)
             if showLog:
                 self.logGUI(logPath)
-            
+
     def logGUI(self, logPath: pathlib.Path):
         logWindow = tkinter.Toplevel(self) #Spawn sub window
         logWindow.title(f"Slome log")
