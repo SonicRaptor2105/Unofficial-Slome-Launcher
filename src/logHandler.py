@@ -2,9 +2,8 @@ import logging
 import sys
 from types import TracebackType
 from typing import Type
-from src.constants import HOME
+from src.constants import HOME, LOGGER
 
-LOGGER = logging.getLogger("Slome Launcher")
 LOGGER.setLevel(logging.ERROR)
 filePath = HOME / "crash.log"
 if filePath.exists():

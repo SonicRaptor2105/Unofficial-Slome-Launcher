@@ -1,9 +1,10 @@
 import struct
 import shutil
 import pathlib
-from src.resourceManager import getResourcePath
+from src.helperMethods import getResourcePath
+from src.constants import HOME, LOGGER
 
-def getBitness(exe: pathlib.Path):
+def _getBitness(exe: pathlib.Path):
     with open(exe, "rb") as f:
         f.seek(0x3C) #Go to byte 60
         pe = struct.unpack("<I", f.read(4))[0] #Get the header to check the bitness
@@ -17,7 +18,7 @@ def getBitness(exe: pathlib.Path):
 
 def install(exe: pathlib.Path):
     patcherDir = getResourcePath(pathlib.Path(__file__).resolve().parent.parent / "patcher")
-    proxyDll = patcherDir / getBitness(exe) / "winhttp.dll"
+    proxyDll = patcherDir / _getBitness(exe) / "winhttp.dll"
     patcherDll = patcherDir / "PersistentPathPatch.dll"
     ini = f"""[General
     enabled=true
@@ -31,3 +32,14 @@ def install(exe: pathlib.Path):
     """
     shutil.copy2(proxyDll, exe.parent / "winhttp.dll")
     (exe.parent / "doorstop_config.ini").write_text(ini, encoding="utf-8") #Inject the ini
+
+def cleanUp(version: pathlib.Path | None):
+    if version: #If one file given
+        (version / "doorstop_config.ini").unlink(missing_ok=True)
+        (version / "winhttp.dll").unlink(missing_ok=True)
+        (version / "saves").rmdir() #Unneeded empty folder
+        LOGGER.debug(f"{version} cleaned")
+        return
+    for v in (HOME / "versions").iterdir(): #If all versions need cleanup
+        if v.is_dir(): #Ignore exes
+            cleanUp(v)
