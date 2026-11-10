@@ -37,7 +37,7 @@ def cleanUp(version: pathlib.Path | None):
     if version: #If one file given
         (version / "doorstop_config.ini").unlink(missing_ok=True)
         (version / "winhttp.dll").unlink(missing_ok=True)
-        (version / "saves").rmdir() #Unneeded empty folder
+        shutil.rmtree(version / "saves", ignore_errors=True) #Unneeded empty folders
         LOGGER.debug(f"{version} cleaned")
         return
     for v in (HOME / "versions").iterdir(): #If all versions need cleanup

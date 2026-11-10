@@ -14,9 +14,9 @@ from PIL import Image, ImageTk
 from src.logHandler import handleException
 from src.aditionalDataClasses import *
 from src.extractFromZip import unzipFile
-from src.modInjector import install
+from src.modInjector import install, cleanUp
 from src.constants import VALIDSLOMEVERSIONS, HOME, LOGGER
-from src.helperMethods import getResourcePath, checkForVersions
+from src.helperMethods import getResourcePath, checkForVersions, cleanCache
 
 class Launcher(tkinter.Tk):
     def __init__(self):
@@ -26,13 +26,12 @@ class Launcher(tkinter.Tk):
         self.minsize(600, 300)
         self.iconbitmap(default=getResourcePath(r"assets\slomeIcon.ico"))
         self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=5)
         self.columnconfigure(0, weight=0)
         self.columnconfigure(1, weight=1)
 
         #Versions box
         versionFrame = tkinter.Frame(self, relief="solid", bd=2)
-        versionFrame.grid(row=1, column=1, rowspan=2, sticky="nsew")
+        versionFrame.grid(row=0, column=1, rowspan=2, sticky="nsew")
         statusBox = tkinter.Frame(versionFrame, height=30, relief="solid", bd=2)
         statusBox.pack(side="bottom", fill="x")
         statusBox.pack_propagate(False)
@@ -45,14 +44,50 @@ class Launcher(tkinter.Tk):
         canvas.create_window((0, 0), window=self.instanceFrame, anchor="nw", tags="inner_window")
         canvas.bind("<Configure>", lambda e: canvas.itemconfig("inner_window", width=e.width))
         canvas.configure(yscrollcommand=scrollbar.set)
+
+        def _scrollVersions(event): #Allows the versions box to scroll normally when over buttons
+            widget = event.widget
+            while widget is not None and widget not in (canvas, self.instanceFrame):
+                widget = widget.master
+            if widget is None:
+                return
+            delta = getattr(event, "delta", 0)
+            if not isinstance(delta, (int, float)):
+                delta = 0
+            button = getattr(event, "num", None)
+            if button == 4 or delta > 0:
+                direction = -1
+            elif button == 5 or delta < 0:
+                direction = 1
+            else:
+                return
+            units = max(1, abs(int(delta)) // 120)
+            first, last = canvas.yview()
+            if first <= 0 and last >= 1:
+                return "break"
+            canvas.yview_scroll(direction * units, "units")
+            return "break"
+
+        self.bind_all("<MouseWheel>", _scrollVersions, add="+")
+        self.bind_all("<Button-4>", _scrollVersions, add="+")
+        self.bind_all("<Button-5>", _scrollVersions, add="+")
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
         #Version info box
         self.inspectedVersion = None
-        self.statusFrame = tkinter.Frame(self, relief="solid", bd=2, width=160)
-        self.statusFrame.grid(row=1, column=0, rowspan=2, sticky="nsew")
+        self.statusFrame = tkinter.Frame(self, relief="solid", bd=2, width=20)
+        self.statusFrame.grid(row=0, column=0, rowspan=2, sticky="nsew")
         self.statusFrame.pack_propagate(False)
+        settingsBtn = tkinter.Button(
+            self.statusFrame,
+            name="settings",
+            text="S",
+            relief="flat",
+            bg="#4A4B4A",
+            command=lambda: self.settingsMenu()
+        )
+        settingsBtn.pack(anchor="nw", pady=0)
 
         self.versions = checkForVersions()
         self.statusLabel.config(text=f"Ready | {len(self.versions)} versions found")
@@ -136,7 +171,7 @@ class Launcher(tkinter.Tk):
                 self.statusLabel.config(text=f"Extracting {filePath.name}...")
                 slomePathEXE = unzipFile(filePath) #Unzip the game first then run it
             self.statusLabel.config(text=f"Launching {filePath.name}...")
-            logPath = HOME / "instances" / filePath.name / datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S.log")
+            logPath = HOME / "instances" / filePath.name / "logs" / datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S.log")
             logPath.parent.mkdir(parents=True, exist_ok=True)
             args = [
                 "-logFile", str(logPath),
@@ -149,8 +184,8 @@ class Launcher(tkinter.Tk):
             try:
                 install(slomePathEXE) #Install the PersistentPathPatch
                 env["DOORSTOP_ENABLED"] = "1" #Activate the patch
-                env["DOORSTOP_TARGET_ASSEMBLY"] = str(getResourcePath(pathlib.Path("patcher") / "PersistentPathPatch.dll"))
-                env["UNITY_DATA_OVERRIDE"] = str(dataDir)
+                env["DOORSTOP_TARGET_ASSEMBLY"] = str(getResourcePath(pathlib.Path("patcher") / "PersistentPathPatch.dll")) #Prevents the patch from needing to be added into every version
+                env["UNITY_DATA_OVERRIDE"] = str(dataDir) #The Application.persistentDataPath override location
                 LOGGER.debug(f"PersistentPathPatch injection successful for {filePath.name}")
             except Exception as e:
                 LOGGER.error(f"Failed to inject PersistentPathPatch for {filePath.name}\n{e}\nLaunching normally.")
@@ -189,23 +224,23 @@ class Launcher(tkinter.Tk):
         stopEvent = threading.Event() #Set a stop event for the sub thread so it can be rejoined on gui close
         logQueue = queue.Queue() #Queue log messages so they can be processed on the main thread
         
-        def readLog(logPath):
+        def _readLog(logPath):
             while not logPath.exists():
                 if stopEvent.is_set():
                     return
-                time.sleep(0.1)
+                time.sleep(0.5)
             with open(logPath, "r", encoding="utf-8", errors="ignore") as f:
                 while not stopEvent.is_set():
                     line = f.readline()
                     if "\x00" in line: #Version has been closed
                         stopEvent.set()
                     if not line:
-                        time.sleep(0.1)
+                        time.sleep(0.5)
                         continue
                     logQueue.put(line)
                     logWindow.event_generate("<<NewLogLine>>", when="tail") #Pass back onto the main thread
 
-        def updateGUI(event=None):
+        def _updateGUI(event=None):
             try:
                 while True:
                     line = logQueue.get_nowait()
@@ -216,14 +251,14 @@ class Launcher(tkinter.Tk):
             except queue.Empty:
                 pass
 
-        def onClose():
+        def _onClose():
             stopEvent.set()
             logWindow.destroy()
             del self.loggers[logPath] #Remove from the dict
 
-        logWindow.bind("<<NewLogLine>>", updateGUI) #Schedules a gui update for every new log found
-        logWindow.protocol("WM_DELETE_WINDOW", onClose) #Close the thread upon the window closing
-        listener = threading.Thread(target=readLog, args=(logPath,), daemon=True)
+        logWindow.bind("<<NewLogLine>>", _updateGUI) #Schedules a gui update for every new log found
+        logWindow.protocol("WM_DELETE_WINDOW", _onClose) #Close the thread upon the window closing
+        listener = threading.Thread(target=_readLog, args=(logPath,), daemon=True)
         listener.start()
 
     def monitorInstance(self, pid): #Removes any running versions instantly to avoid having to clean up later
@@ -254,8 +289,10 @@ class Launcher(tkinter.Tk):
         self.inspectedVersion = locals().copy() #Save the last inspected version without the self reference
         self.inspectedVersion.pop("self", None)
         for child in self.statusFrame.winfo_children(): #Prevent versions from stacking
-            child.destroy()
-        thumbnail = thumbnail.resize((80, 80), Image.Resampling.NEAREST) #Use nearest to ensure hard edges
+            if child.winfo_name() != "settings":
+                child.destroy()
+        self.statusFrame.config(width=160)
+        thumbnail = thumbnail.resize((80, 80), Image.Resampling.NEAREST) #Use nearest as its best for pixel art
         photo = ImageTk.PhotoImage(thumbnail)
         img = tkinter.Label(self.statusFrame, image=photo)
         img.image = photo
@@ -289,3 +326,16 @@ class Launcher(tkinter.Tk):
             command=lambda: os.startfile(savesFolder)
         )
         saveFolderBtn.pack()
+
+    def settingsMenu(self):
+        settingsMenu = tkinter.Toplevel(self) #Settings menu as a new window
+        settingsMenu.title(f"Settings")
+        settingsMenu.geometry("500x300")
+        settingsMenu.resizable(False, False)
+        cleanUpBtn = tkinter.Button(
+            settingsMenu,
+            text="Cleanup",
+            relief="flat",
+            command=lambda: (cleanUp(None), cleanCache()) #Run all cleanups
+        )
+        cleanUpBtn.pack()
